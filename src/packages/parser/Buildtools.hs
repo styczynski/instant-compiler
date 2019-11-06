@@ -20,7 +20,6 @@ module Buildtools (
     , executeTasks
     , executeStackBuild
     , executeSubTask
-    , useStackVersion
 ) where
 
 import Distribution.Simple
@@ -71,7 +70,7 @@ grepShCommand command args cwd regex = do
 
 getStackInstallDir :: String -> IO String
 getStackInstallDir path = shelly $ silently $ do
-    stackPathResult <- grepShCommand "stack" ["path", "--allow-different-user"] path "local-install-root: (.*)"
+    stackPathResult <- grepShCommand "./stack" ["path", "--allow-different-user"] path "local-install-root: (.*)"
     stackPath <- return $ case stackPathResult of
         Nothing -> ""
         Just (h:_) -> h
@@ -84,7 +83,7 @@ executeCommand command args cwd = liftIO $ shelly $ do
     return $ unpack result
 
 executeCommandStack :: [String] -> String -> Action String
-executeCommandStack args = executeCommand "stack" (["--allow-different-user"] ++ args)
+executeCommandStack args = executeCommand "./stack" (["--allow-different-user"] ++ args)
 
 executeCommandX :: String -> [String] -> String -> Action (Maybe String)
 executeCommandX command args cwd = liftIO $ catchany (shelly $ do
@@ -101,20 +100,16 @@ executeCommandXEnv command args cwd env = liftIO $ catchany (shelly $ do
     return $ Just $ unpack result) (\(e :: SomeException) -> do
         handleStackBuildOutput $ show e)
 
-executeSubTask :: String -> Action (Maybe String)
-executeSubTask path = do
+executeSubTask :: String -> String -> Action (Maybe String)
+executeSubTask stackVersion path = do
   --liftIO $ putStrLn "[!!!] install stack"
   --executeCommandXEnv "bash" ["-c", "unset GHC_PACKAGE_PATH && unset HASKELL_PACKAGE_SANDBOX && unset GHC_ENVIRONMENT && unset HASKELL_DIST_DIR && unset HASKELL_PACKAGE_SANDBOXES && printenv && stack upgrade --binary-version " ++ stackVersion] path []
   liftIO $ putStrLn "[!!!] execute shake subtask"
-  executeCommandXEnv "bash" ["-c", "unset GHC_PACKAGE_PATH && unset HASKELL_PACKAGE_SANDBOX && unset GHC_ENVIRONMENT && unset HASKELL_DIST_DIR && unset HASKELL_PACKAGE_SANDBOXES && printenv && stack runhaskell Shakefile.hs --cwd " ++ path ++ ""] "." []
+  executeCommandXEnv "bash" ["-c", "unset GHC_PACKAGE_PATH && unset HASKELL_PACKAGE_SANDBOX && unset GHC_ENVIRONMENT && unset HASKELL_DIST_DIR && unset HASKELL_PACKAGE_SANDBOXES && stack exec --cwd " ++ path ++ " -- shake "] "." []
 
-useStackVersion :: String -> Action (Maybe String)
-useStackVersion stackVersion = do
-  liftIO $ putStrLn "[!!!] set stack version task"
-  executeCommandXEnv "bash" ["-c", "unset GHC_PACKAGE_PATH && unset HASKELL_PACKAGE_SANDBOX && unset GHC_ENVIRONMENT && unset HASKELL_DIST_DIR && unset HASKELL_PACKAGE_SANDBOXES && printenv && stack upgrade --binary-version " ++  stackVersion] "." []
 
 executeCommandStackX :: [String] -> String -> Action (Maybe String)
-executeCommandStackX args = executeCommandX "stack" (["--allow-different-user"] ++ args)
+executeCommandStackX args = executeCommandX "./stack" (["--allow-different-user"] ++ args)
 
 glob :: String -> Action [FilePath]
 glob = liftIO . Glob.glob
