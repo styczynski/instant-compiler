@@ -9,4 +9,4 @@ src/packages/parser/parser/
 build.lock
 insc_jvm
 insc_llvm
-./stack
+**/stack
