@@ -70,7 +70,7 @@ grepShCommand command args cwd regex = do
 
 getStackInstallDir :: String -> IO String
 getStackInstallDir path = shelly $ silently $ do
-    stackPathResult <- grepShCommand "../stack" ["path", "--allow-different-user"] path "local-install-root: (.*)"
+    stackPathResult <- grepShCommand "../../stack" ["path", "--allow-different-user"] path "local-install-root: (.*)"
     stackPath <- return $ case stackPathResult of
         Nothing -> ""
         Just (h:_) -> h
@@ -83,7 +83,7 @@ executeCommand command args cwd = liftIO $ shelly $ do
     return $ unpack result
 
 executeCommandStack :: [String] -> String -> Action String
-executeCommandStack args = executeCommand "../stack" (["--allow-different-user"] ++ args)
+executeCommandStack args = executeCommand "../../stack" (["--allow-different-user"] ++ args)
 
 executeCommandX :: String -> [String] -> String -> Action (Maybe String)
 executeCommandX command args cwd = liftIO $ catchany (shelly $ do
@@ -109,7 +109,7 @@ executeSubTask stackVersion path = do
 
 
 executeCommandStackX :: [String] -> String -> Action (Maybe String)
-executeCommandStackX args = executeCommandX "../stack" (["--allow-different-user"] ++ args)
+executeCommandStackX args = executeCommandX "../../stack" (["--allow-different-user"] ++ args)
 
 glob :: String -> Action [FilePath]
 glob = liftIO . Glob.glob
