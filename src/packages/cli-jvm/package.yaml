@@ -42,7 +42,7 @@ library:
   source-dirs:
   - src
   - ../core/src
-  - ../../_build/parser
+  - ../parser/parser
 
 executables:
   inscjvm:
