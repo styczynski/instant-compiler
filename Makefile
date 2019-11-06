@@ -1,4 +1,6 @@
+STACK := $(shell echo "$$HOME/Development/bin/stack/stack")
+
 all:
-	stack install --only-dependencies
-	stack install shake
-	stack exec -- shake
+	$(STACK) install --only-dependencies
+	$(STACK) install shake
+	$(STACK) exec -- shake
