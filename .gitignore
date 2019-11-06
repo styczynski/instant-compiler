@@ -1,3 +1,11 @@
 .stack-work/
 instant-compiler.cabal
 *~
+*.cabal
+.idea/
+src/packages/parser/parser/
+**/_build/
+**/.stack-work/
+build.lock
+insc_jvm
+insc_llvm
