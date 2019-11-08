@@ -103,9 +103,7 @@ compile (Prog statements) = do
   (pOut, pEnv) <- foldM (\(out, env) ins -> do
     (newOut, newEnv) <- local (\_ -> env) $ compileStmt ins
     return (out ++ newOut, newEnv)) ([], env) statements
-  return (pOut ++ [
-    InvokeStatic "com/instant/Runtime/printInt(I)V",
-    Return], pEnv)
+  return (pOut ++ (if (length statements > 0) then [InvokeStatic "com/instant/Runtime/printInt(I)V"] else []) ++ [Return], pEnv)
 
 compilerJVM :: Program -> Exec (String, Environment)
 compilerJVM program = do

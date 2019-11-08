@@ -120,12 +120,11 @@ compile (Prog statements) = do
   return (pOut, pEnv)
 
 compilerLLVM :: Program -> Exec (String, Environment)
-compilerLLVM program = do
+compilerLLVM program@(Prog statements) = do
   header <- return $ [r|declare void @printInt(i32)
        define i32 @main() {
 |]
-  footer <- return $ [r|
-       call void @printInt(i32 %result)
+  footer <- return $ (if (length statements > 0) then "call void @printInt(i32 %result)\n" else "") ++ [r|
        ret i32 0
    }
     |]
