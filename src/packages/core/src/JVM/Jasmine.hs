@@ -26,6 +26,7 @@ data JInstruction =
   | IntOp JIntOp
   | InvokeStatic String
   | Return
+  | Pop
 
 data JMethod =
   Method Bool Bool
@@ -63,6 +64,7 @@ jasmineDirective (LimitLocals val) = ".limit locals " ++ show val
 jasmineDirective (Line val) = ".line " ++ show val
 
 instructionToJasmine :: JInstruction -> String
+instructionToJasmine Pop = "pop"
 instructionToJasmine (Directive dir) = jasmineDirective dir
 instructionToJasmine (Push val) = jasminePush val
 instructionToJasmine (StoreInt index) = jasmineStoreInt index
