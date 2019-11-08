@@ -17,7 +17,7 @@ getStackSize = foldl getStackSizeForInstruction 0
 getLocalsSizeForInstruction :: JInstruction -> Int
 getLocalsSizeForInstruction (LoadInt index) = index+1
 getLocalsSizeForInstruction (StoreInt index) = index+1
-getLocalsSizeForInstruction _ = 0
+getLocalsSizeForInstruction _ = 1
 
 getLocalsSize :: [JInstruction] -> Int
 getLocalsSize ins = maximum $ map getLocalsSizeForInstruction ins

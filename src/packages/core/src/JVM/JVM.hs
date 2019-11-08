@@ -103,14 +103,14 @@ compilerJVM program = do
      .end method
 
      .method public static main([Ljava/lang/String;)V
-    |]
+|]
   footer <- return $ [r|
-       .end method
-      |]
+     .end method
+|]
   (compiledProgram, env) <- compile $ optimizeStackOrder program
   stackLimit <- return $ getStackSize compiledProgram
   localsLimit <- return $ getLocalsSize compiledProgram
-  (insContent, _) <- return $ jasmineInstructions "         " $ [ Directive $ LimitStack stackLimit, Directive $ LimitLocals localsLimit ] ++ compiledProgram
+  (insContent, _) <- return $ jasmineInstructions "       " $ [ Directive $ LimitStack stackLimit, Directive $ LimitLocals localsLimit ] ++ compiledProgram
   content <- return $ header ++ insContent ++ footer
   _ <- liftIO $ putStrLn content
   _ <- liftIO $ runCompilationTools content

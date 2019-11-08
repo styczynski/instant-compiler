@@ -14,7 +14,8 @@ data Environment = Environment {
   store :: Map Int Location,
   scope :: Map String Variable,
   freeLVIndex :: Int,
-  freeVarID :: Int
+  freeVarID :: Int,
+  freeVarNameNo :: Int
 }
 
 data Location = Local Int
@@ -25,7 +26,8 @@ emptyEnv = Environment {
   store = empty,
   scope = empty,
   freeLVIndex = 0,
-  freeVarID = 0
+  freeVarID = 0,
+  freeVarNameNo = 0
 }
 
 data ExecutionResult = FailedParse String | FailedCompilation String | Compiled String Environment
@@ -33,6 +35,11 @@ type Exec
   = StateT (CompilerState) (ReaderT (Environment) (ExceptT String IO))
 
 type Compiler = Program -> Exec (String, Environment)
+
+uniqueName :: Environment -> (String, Environment)
+uniqueName env =
+  let newName = "var_" ++ show (freeVarNameNo env) in
+    (newName, env { freeVarNameNo = (freeVarNameNo env) + 1 })
 
 allocate :: Int -> Environment -> (Location, Environment)
 allocate id env =
