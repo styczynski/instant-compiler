@@ -10,3 +10,6 @@ build.lock
 insc_jvm
 insc_llvm
 **/stack
+lab/
+vendor/
+insc_build/

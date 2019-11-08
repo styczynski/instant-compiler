@@ -37,6 +37,7 @@ dependencies:
 - Glob >= 0.10.0
 - shelly >= 1.8.1
 - regex-tdfa >= 1.2.3.2
+- jvm-parser
 
 library:
   source-dirs:
