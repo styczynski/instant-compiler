@@ -3,8 +3,8 @@ module JVM.OptimizeStackOrder where
 import Syntax.Base
 
 optimizeStackOrderExp :: Exp -> (Exp, Int)
-optimizeStackOrderExp v@(ExpVar _) = (v, 0)
-optimizeStackOrderExp v@(ExpLit _) = (v, 0)
+optimizeStackOrderExp v@(ExpVar _) = (v, 1)
+optimizeStackOrderExp v@(ExpLit _) = (v, 1)
 optimizeStackOrderExp (ExpAdd l r) = let (ol, dl) = optimizeStackOrderExp l in let (or, dr) = optimizeStackOrderExp r in
   if dl < dr then ((ExpAdd ol or), dr+1) else ((ExpAdd or ol, dl+1))
 optimizeStackOrderExp (ExpDiv l r) = let (ol, dl) = optimizeStackOrderExp l in let (or, dr) = optimizeStackOrderExp r in

@@ -9,6 +9,7 @@ getStackSizeForInstruction :: Int -> JInstruction -> Int
 getStackSizeForInstruction oldSize (Push v) = getStackSizeForPush oldSize v
 getStackSizeForInstruction oldSize (StoreInt _) = oldSize - 1
 getStackSizeForInstruction oldSize (LoadInt _) = oldSize + 1
+getStackSizeForInstruction oldSize (ConstInt _) = oldSize + 1
 getStackSizeForInstruction oldSize _ = oldSize
 
 getStackSize :: [JInstruction] -> Int

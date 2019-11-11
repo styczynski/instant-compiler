@@ -21,12 +21,13 @@ data JInstruction =
   Directive JDirective
   | Push JConstant
   | StoreInt Int
-  | ConstInt Int
+  | ConstInt String
   | LoadInt Int
   | IntOp JIntOp
   | InvokeStatic String
   | Return
   | Pop
+  | Swap
 
 data JMethod =
   Method Bool Bool
@@ -46,8 +47,8 @@ jasminePushSize (JNumber val)
 jasmineStoreInt :: Int -> String
 jasmineStoreInt index = "istore_" ++ show index
 
-jasmineConstInt :: Int -> String
-jasmineConstInt index = "iconst_" ++ show index
+jasmineConstInt :: String -> String
+jasmineConstInt index = "iconst_" ++ index
 
 jasmineLoadInt :: Int -> String
 jasmineLoadInt index = "iload_" ++ show index
@@ -67,11 +68,13 @@ instructionToJasmine :: JInstruction -> String
 instructionToJasmine Pop = "pop"
 instructionToJasmine (Directive dir) = jasmineDirective dir
 instructionToJasmine (Push val) = jasminePush val
+instructionToJasmine Swap = "swap"
 instructionToJasmine (StoreInt index) = jasmineStoreInt index
 instructionToJasmine (LoadInt index) = jasmineLoadInt index
 instructionToJasmine (IntOp op) = jasmineOpInt op
 instructionToJasmine (InvokeStatic ins) = "invokestatic " ++ ins
 instructionToJasmine Return = "return"
+instructionToJasmine (ConstInt v) = jasmineConstInt v
 
 jasmineGeneratePrefix :: Int -> JInstruction -> (String, Int)
 jasmineGeneratePrefix i _ = ("", i)

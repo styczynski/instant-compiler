@@ -37,54 +37,64 @@ runCompilationTools content = shelly $ silently $ do
   bash "cp" ["-rf", "./insc_build/jvm/Main.jar", "."]
   return ()
 
-compileExp :: Exp -> Exec [JInstruction]
+optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], Int, Bool)
+optimizeExpStackBiAlloc l r = do
+  (ol, dl) <- compileExp l
+  (or, dr) <- compileExp r
+  return $ if dl <= dr then (ol, or, dr+1, True) else (or, ol, dl+1, False)
+
+makeSwap :: Bool -> [JInstruction]
+makeSwap False = []
+makeSwap True = [Swap]
+
+compileExp :: Exp -> Exec ([JInstruction], Int)
 compileExp (ExpAdd l r) = do
-  cl <- compileExp l
-  cr <- compileExp r
-  return $ cl ++ cr ++ [IntOp Add]
+  (cl, cr, s, _) <- optimizeExpStackBiAlloc l r
+  return $ (cl ++ cr ++ [IntOp Add], s)
 compileExp (ExpDiv l r) = do
-  cl <- compileExp l
-  cr <- compileExp r
-  return $ cl ++ cr ++ [IntOp Div]
+  (cl, cr, s, swap) <- optimizeExpStackBiAlloc l r
+  return $ (cl ++ cr ++ (makeSwap swap) ++ [IntOp Div], s)
 compileExp (ExpMul l r) = do
-  cl <- compileExp l
-  cr <- compileExp r
-  return $ cl ++ cr ++ [IntOp Mul]
+  (cl, cr, s, _) <- optimizeExpStackBiAlloc l r
+  return $ (cl ++ cr ++ [IntOp Mul], s)
 compileExp (ExpSub l r) = do
-  cl <- compileExp l
-  cr <- compileExp r
-  return $ cl ++ cr ++ [IntOp Sub]
+  (cl, cr, s, swap) <- optimizeExpStackBiAlloc l r
+  return $ (cl ++ cr ++ (makeSwap swap) ++ [IntOp Sub], s)
 compileExp (ExpLit val) = do
-  return [Push $ JNumber $ fromIntegral val]
+  if (val >= -1 && val <= 5) then do return (compileConstPush $ fromIntegral val, 1) else return ([Push $ JNumber $ fromIntegral val], 1)
 compileExp (ExpVar (Ident name)) = do
   env <- ask
   (Just (Local index)) <- return $ getVar name env
-  return [LoadInt index]
+  return ([LoadInt index], 1)
 
 locationToStoreInst :: Location -> JInstruction
 locationToStoreInst (Local index) = StoreInt index
 
+compileConstPush :: Int -> [JInstruction]
+compileConstPush (-1) = [ConstInt "m1"]
+compileConstPush v = [ConstInt $ show v]
+
 compileStmt :: Stmt -> Exec ([JInstruction], Environment)
 compileStmt (SAss (Ident name) exp) = do
   env <- ask
-  compiledExp <- compileExp exp
+  (compiledExp, _) <- compileExp exp
   (loc, env1) <- return $ defineAndAlloc name env
   out <- return $ compiledExp ++ [locationToStoreInst loc]
   return (out, env1)
 compileStmt (SRAss (Ident name) exp) = do
   env <- ask
-  compiledExp <- compileExp exp
+  (compiledExp, _) <- compileExp exp
   (loc, env1) <- return $ defineAndAlloc name env
   (compiledExp0, env2) <- local (\_ -> env1) $ compileStmt $ SRExp exp
   out <- return $ compiledExp ++ [locationToStoreInst loc] ++ compiledExp0
   return (out, env2)
 compileStmt (SExp exp) = do
   env <- ask
-  compiledExp <- compileExp exp
+  (compiledExp, _) <- compileExp exp
   return (compiledExp ++ [Pop], env)
 compileStmt (SRExp exp) = do
   env <- ask
-  compiledExp <- compileExp exp
+  (compiledExp, _) <- compileExp exp
   return (compiledExp, env)
 
 translateStmtsEndI :: Stmt -> Stmt
