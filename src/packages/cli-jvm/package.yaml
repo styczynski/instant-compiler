@@ -8,7 +8,6 @@ copyright:           "2019 Piotr Styczyński"
 
 extra-source-files:
 - README.md
-- ChangeLog.md
 
 synopsis:            Interpreter for Ocaml language subset
 category:            Interpreter
