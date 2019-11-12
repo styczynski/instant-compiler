@@ -3,6 +3,10 @@
 module JVM.JVM where
 import Text.RawString.QQ
 
+import Text.Heterocephalus (compileText)
+import Text.Blaze.Renderer.Utf8 (renderMarkup)
+import Data.ByteString.Lazy.UTF8 (toString)
+
 import Compiler.Compiler
 import Syntax.Base
 import Shelly
@@ -19,36 +23,44 @@ import JVM.Inspection
 
 import JVM.OptimizeStackOrder
 
-generateManifest :: String
-generateManifest = [r|Manifest-Version: 1.0
-Main-Class: com.instant.Main
+import qualified Data.Char as Char
+
+capitalized :: String -> String
+capitalized (head:tail) = Char.toUpper head : map Char.toLower tail
+capitalized [] = []
+
+generateManifest :: JVMCompilerConfiguration -> String
+generateManifest opts = let programClassName = capitalized $ jvmProgramName opts in toString $ renderMarkup $ [compileText|Manifest-Version: 1.0
+Main-Class: com.instant.#{programClassName}
 |]
 
 data JVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmLibLocation :: String,
   jvmBinLocation :: String,
-  jvmRunProgram :: Bool
+  jvmRunProgram :: Bool,
+  jvmProgramName :: String
 }
 
 defaultJVMCompilerConfiguration :: JVMCompilerConfiguration
 defaultJVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmLibLocation = ".",
   jvmBinLocation = ".",
-  jvmRunProgram = False
+  jvmRunProgram = False,
+  jvmProgramName = "main"
 }
 
 runCompilationTools :: JVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/jvm/com/instant"]
-  _ <- liftIO $ writeFile "./insc_build/jvm/Main.mf" generateManifest
-  _ <- liftIO $ writeFile "./insc_build/jvm/main.j" content
-  bash "cp" ["-rf", T.pack $ (jvmLibLocation opts) ++ "/lib/Runtime.java", "./insc_build/jvm/com/instant/Runtime.java"]
-  bash "java" ["-jar", T.pack $ (jvmBinLocation opts) ++ "/bin/jasmin.jar", "-d", "./insc_build/jvm", "./insc_build/jvm/main.j"]
+  _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".mf") $ generateManifest opts
+  _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j") content
+  bash "cp" ["-rf", T.pack ((jvmLibLocation opts) ++ "/lib/Runtime.java"), "./insc_build/jvm/com/instant/Runtime.java"]
+  bash "java" ["-jar", T.pack ((jvmBinLocation opts) ++ "/bin/jasmin.jar"), "-d", "./insc_build/jvm", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".j")]
   bash "javac" ["./insc_build/jvm/com/instant/Runtime.java"]
   cd "./insc_build/jvm"
-  bash "jar" ["cmf", "Main.mf", "Main.jar", "./com/instant/Main.class", "./com/instant/Runtime.class"]
+  bash "jar" ["cmf", T.pack ((capitalized $ jvmProgramName opts) ++ ".mf"), T.pack ((capitalized $ jvmProgramName opts) ++ ".jar"), T.pack ("./com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), "./com/instant/Runtime.class"]
   cd "../.."
-  bash "cp" ["-rf", "./insc_build/jvm/Main.jar", "."]
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".jar"), "."]
   return ()
 
 optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], Int, Bool)
@@ -135,14 +147,15 @@ defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p
 postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", "./Main.jar"] else return ":)"
+  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ("./" ++ (capitalized $ jvmProgramName opts) ++ ".jar")] else return ":)"
   return (T.unpack out, env)
 
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerJVM opts program = do
-  header <- return $ [r|.bytecode 57.0
-     .source Main.java
-     .class public com/instant/Main
+  programClassName <- return $ capitalized $ jvmProgramName opts
+  header <- return $ toString $ renderMarkup $ [compileText|.bytecode 57.0
+     .source #{programClassName}.java
+     .class public com/instant/#{programClassName}
      .super java/lang/Object
 
      .method public <init>()V

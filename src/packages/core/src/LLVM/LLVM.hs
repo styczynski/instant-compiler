@@ -19,26 +19,34 @@ import qualified Data.Text as T
 
 data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmLibLocation :: String,
-  llvmRunProgram :: Bool
+  llvmRunProgram :: Bool,
+  llvmProgramName :: String
 }
 
 defaultLLVMCompilerConfiguration :: LLVMCompilerConfiguration
 defaultLLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmLibLocation = ".",
-  llvmRunProgram = False
+  llvmRunProgram = False,
+  llvmProgramName = "main"
 }
 
 runCompilationTools :: LLVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/llvm"]
-  _ <- liftIO $ writeFile "./insc_build/llvm/main.ll" content
+  _ <- liftIO $ writeFile ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".ll") content
   bash "cp" ["-rf", T.pack $ (llvmLibLocation opts) ++ "/lib/runtime.ll", "./insc_build/llvm/runtime.ll"]
-  bash "llvm-as" ["-o", "./insc_build/llvm/main.bc", "./insc_build/llvm/main.ll"]
+  bash "llvm-as" ["-o", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".bc"), T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".ll")]
   bash "llvm-as" ["-o", "./insc_build/llvm/runtime.bc", "./insc_build/llvm/runtime.ll"]
-  bash "llc" ["-o", "./insc_build/llvm/main.s", "./insc_build/llvm/main.bc"]
+  bash "llc" ["-o", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".s"), T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".bc")]
   bash "llc" ["-o", "./insc_build/llvm/runtime.s", "./insc_build/llvm/runtime.bc"]
-  bash "clang" ["-o", "./insc_build/llvm/main", "./insc_build/llvm/main.s", "./insc_build/llvm/runtime.s"]
+  bash "clang" ["-o", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts)), T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".s"), "./insc_build/llvm/runtime.s"]
   return ()
+
+postCompile :: LLVMCompilerConfiguration -> Exec (String, Environment)
+postCompile opts = do
+  env <- ask
+  out <- if (llvmRunProgram opts) then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts))) [] else return ":)"
+  return (T.unpack out, env)
 
 uniqueNameForExpStack :: Exp -> Exec (String, Environment)
 uniqueNameForExpStack (ExpLit value) = do
@@ -153,4 +161,4 @@ compilerLLVM opts program@(Prog statements) = do
   content <- return $ header ++ insContent ++ footer
   _ <- liftIO $ putStrLn content
   _ <- liftIO $ runCompilationTools opts content
-  return ("OK", env)
+  local (\_ -> env) $ postCompile opts

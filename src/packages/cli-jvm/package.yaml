@@ -35,6 +35,10 @@ dependencies:
 - QuickCheck >= 2.12.6.1
 - Glob >= 0.10.0
 - shelly >= 1.8.1
+- filepath >= 1.4.2.1
+- heterocephalus >= 1.0.5.3
+- blaze-markup >= 0.8.2.3
+- utf8-string >= 1.0.1.1
 - test-preprocessor
 - instant-core
 - instant-parser

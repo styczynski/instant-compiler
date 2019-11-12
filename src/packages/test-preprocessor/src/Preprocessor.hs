@@ -76,10 +76,10 @@ spec = do
   describe "#{specName}: #{testName}" $ do
     %{ if (shouldSkip) } xit %{ else } it %{ endif }"#{testDescription}" $ do
 %{ if (lang == "jvm") }
-      options <- return $ JVMCompilerConfiguration { jvmLibLocation = "../../..", jvmBinLocation = "../../..", jvmRunProgram = True }
+      options <- return $ JVMCompilerConfiguration { jvmLibLocation = "../../..", jvmBinLocation = "../../..", jvmRunProgram = True, jvmProgramName = "#{specName}" }
 %{ endif }
 %{ if (lang == "llvm") }
-      options <- return $ LLVMCompilerConfiguration { llvmLibLocation = "../../..", llvmRunProgram = True }
+      options <- return $ LLVMCompilerConfiguration { llvmLibLocation = "../../..", llvmRunProgram = True, llvmProgramName = "#{specName}" }
 %{ endif }
       output <- callCompiler options 0 #{multilineStringStart}
 #{indentedInput}

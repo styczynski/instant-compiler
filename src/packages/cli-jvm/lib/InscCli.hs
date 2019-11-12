@@ -3,6 +3,8 @@ module InscCli where
 import Options.Applicative
 import Data.Semigroup ((<>))
 
+import System.FilePath.Posix(takeBaseName)
+
 import System.IO ( stdin, stderr, hPutStrLn, hGetContents )
 import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
@@ -71,5 +73,5 @@ parseMainArgs = MainArgs
 mainEntry :: MainArgs -> IO ()
 mainEntry (MainArgs verbosity file) = case (verbosity, file) of
   (v, "stdin") -> execContents defaultCompilerJVM v
-  (v, src) -> runFile defaultCompilerJVM v src
+  (v, src) -> let conf = defaultJVMCompilerConfiguration in runFile (compilerJVM (conf { jvmProgramName = (takeBaseName file) })) v src
 mainEntry _ = return ()
