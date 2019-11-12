@@ -56,6 +56,7 @@ uniqueNameForExpStack (ExpLit value) = do
   return (show value, env)
 uniqueNameForExpStack (ExpVar (Ident name)) = do
   env <- ask
+  name <- getVarName name
   return ("%" ++ name, env)
 uniqueNameForExpStack _ = do
   env <- ask
