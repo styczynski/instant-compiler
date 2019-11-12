@@ -40,6 +40,8 @@ runCompilationTools opts content = shelly $ silently $ do
   bash "llc" ["-o", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".s"), T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".bc")]
   bash "llc" ["-o", "./insc_build/llvm/runtime.s", "./insc_build/llvm/runtime.bc"]
   bash "clang" ["-o", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts)), T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".s"), "./insc_build/llvm/runtime.s"]
+  bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".ll"), "."]
+  bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".bc"), "."]
   return ()
 
 postCompile :: LLVMCompilerConfiguration -> Exec (String, Environment)

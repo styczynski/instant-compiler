@@ -60,6 +60,7 @@ runCompilationTools opts content = shelly $ silently $ do
   cd "./insc_build/jvm"
   bash "jar" ["cmf", T.pack ((capitalized $ jvmProgramName opts) ++ ".mf"), T.pack ((capitalized $ jvmProgramName opts) ++ ".jar"), T.pack ("./com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), "./com/instant/Runtime.class"]
   cd "../.."
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), T.pack ("./" ++ (jvmProgramName opts) ++ ".class")]
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".jar"), "."]
   return ()
 
