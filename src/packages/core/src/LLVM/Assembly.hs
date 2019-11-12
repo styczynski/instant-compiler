@@ -9,12 +9,14 @@ data LInstruction =
   | Sub String String String String
   | Div String String String String
   | Mul String String String String
+  | Print String
 
 instructionToLLVM :: LInstruction -> String
 instructionToLLVM (Add target typeName a b) = target ++ " = add " ++ typeName ++ " " ++ a ++ ", " ++ b
 instructionToLLVM (Sub target typeName a b) = target ++ " = sub " ++ typeName ++ " " ++ a ++ ", " ++ b
 instructionToLLVM (Div target typeName a b) = target ++ " = div " ++ typeName ++ " " ++ a ++ ", " ++ b
 instructionToLLVM (Mul target typeName a b) = target ++ " = mul " ++ typeName ++ " " ++ a ++ ", " ++ b
+instructionToLLVM (Print target) = "call void @printInt(i32 " ++ target ++ ")"
 
 llvmGeneratePrefix :: Int -> LInstruction -> (String, Int)
 llvmGeneratePrefix i _ = ("", i)

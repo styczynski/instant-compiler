@@ -36,15 +36,32 @@ type Exec
 
 type Compiler = Program -> Exec (String, Environment)
 
-uniqueName :: Environment -> (String, Environment)
-uniqueName env =
-  let newName = "var_" ++ show (freeVarNameNo env) in
+getUniqueNameFrom :: String -> Int -> String
+getUniqueNameFrom prefix index = prefix ++ "__var_" ++ show index
+
+uniqueNameFromRaw :: String -> Environment -> (String, Environment)
+uniqueNameFromRaw prefix env =
+  let newName = prefix ++ "_" ++ show (freeVarNameNo env) in
     (newName, env { freeVarNameNo = (freeVarNameNo env) + 1 })
+
+uniqueNameIndex :: Environment -> (Int, Environment)
+uniqueNameIndex env =
+  let newNameIndex = freeVarNameNo env in
+    (newNameIndex, env { freeVarNameNo = (freeVarNameNo env) + 1 })
+
+uniqueName :: Environment -> (String, Environment)
+uniqueName env = uniqueNameFromRaw "var" env
+
+uniqueNameFrom :: String -> Environment -> (String, Environment)
+uniqueNameFrom prefix env = uniqueNameFromRaw (prefix ++ "__var") env
 
 allocate :: Int -> Environment -> (Location, Environment)
 allocate id env =
   let freeIndex = freeLVIndex env in
     ((Local freeIndex), env { freeLVIndex = (freeLVIndex env) + 1, store = insert id (Local freeIndex) (store env) })
+
+allocateAt :: Int -> Int -> Environment -> (Location, Environment)
+allocateAt id freeIndex env = ((Local freeIndex), env { store = insert id (Local freeIndex) (store env) })
 
 define :: String -> Environment -> (Int, Environment)
 define name env =

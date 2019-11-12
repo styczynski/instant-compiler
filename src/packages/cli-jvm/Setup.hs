@@ -5,7 +5,7 @@ customHook originalFn = do
     executeTasks $ do
         want ["test/Generated/Basic01Spec.hs"]
         ["test/Generated/*.hs"] &%> \[ouths] -> do
-            executeCommandStack ["exec", "test-preprocessor", "--", "-i", "../../../examples", "-o", "./test/Generated", "-p", "Generated."] "."
+            executeCommandStack ["exec", "test-preprocessor", "--", "-l", "jvm", "-i", "../../../examples", "-o", "./test/Generated", "-p", "Generated."] "."
             finish
     originalFn
 

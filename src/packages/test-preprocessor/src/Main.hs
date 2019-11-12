@@ -7,6 +7,7 @@ import Preprocessor
 data MainArgs = MainArgs
   { verbosity :: Int
   , inputDirectory :: String
+  , lang :: String
   , outputDirectory :: String
   , testPrefix :: String }
 
@@ -25,6 +26,13 @@ parseMainArgs = MainArgs
       <> value "examples"
       <> help "Direcotry to look for tests input code"
       <> metavar "INPUT_DIRECTORY" )
+  <*> strOption
+        ( long "outputLanguage"
+        <> short 'l'
+        <> showDefault
+        <> value "jvm"
+        <> help "Output language (jvm/llvm)"
+        <> metavar "INPUT_DIRECTORY" )
   <*> strOption
         ( long "outputDirectory"
         <> short 'o'
@@ -49,6 +57,6 @@ main = mainEntry =<< execParser opts
       <> header "Piotr Styczynski 2019" )
 
 mainEntry :: MainArgs -> IO ()
-mainEntry (MainArgs verbosity file out prefix) = case (verbosity, file, out, prefix) of
-  (v, dir, out, prefix) -> preprocessDirectory prefix out dir
+mainEntry (MainArgs verbosity file lang out prefix) = case (verbosity, file, lang, out, prefix) of
+  (v, dir, lang, out, prefix) -> preprocessDirectory lang prefix out dir
 mainEntry _ = return ()

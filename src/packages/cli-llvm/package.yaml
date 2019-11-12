@@ -41,15 +41,32 @@ dependencies:
 
 library:
   source-dirs:
-  - src
+  - lib
   - ../core/src
   - ../parser/parser
+
+tests:
+  llvm-test:
+    main:                Main.hs
+    source-dirs:
+      - test
+      - lib
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    defaults: hspec/hspec@master
+    dependencies:
+      - instant-core
+      - instant-parser
+      - regex-tdfa >= 1.2.3.2
 
 executables:
   inscllvm:
     main:                Main.hs
     source-dirs:
     - src
+    - lib
     dependencies:
     - instant-core
     - instant-parser

@@ -14,13 +14,25 @@ import Control.Monad.Reader
 import Control.Monad
 import Data.Array
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 
-runCompilationTools :: String -> IO ()
-runCompilationTools content = shelly $ silently $ do
+data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
+  llvmLibLocation :: String,
+  llvmRunProgram :: Bool
+}
+
+defaultLLVMCompilerConfiguration :: LLVMCompilerConfiguration
+defaultLLVMCompilerConfiguration = LLVMCompilerConfiguration {
+  llvmLibLocation = ".",
+  llvmRunProgram = False
+}
+
+runCompilationTools :: LLVMCompilerConfiguration -> String -> IO ()
+runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/llvm"]
   _ <- liftIO $ writeFile "./insc_build/llvm/main.ll" content
-  bash "cp" ["-rf", "./lib/runtime.ll", "./insc_build/llvm/runtime.ll"]
+  bash "cp" ["-rf", T.pack $ (llvmLibLocation opts) ++ "/lib/runtime.ll", "./insc_build/llvm/runtime.ll"]
   bash "llvm-as" ["-o", "./insc_build/llvm/main.bc", "./insc_build/llvm/main.ll"]
   bash "llvm-as" ["-o", "./insc_build/llvm/runtime.bc", "./insc_build/llvm/runtime.ll"]
   bash "llc" ["-o", "./insc_build/llvm/main.s", "./insc_build/llvm/main.bc"]
@@ -76,55 +88,63 @@ compileExp stackVarName (ExpVar _) = do
   env <- ask
   return ([], env)
 
-compileStmt :: Stmt -> Exec ([LInstruction], Environment)
-compileStmt (SAss (Ident name) (ExpLit val)) = do
+getVarName :: String -> Exec String
+getVarName name = do
   env <- ask
-  return ([Add ("%" ++ name) "i32" (show val) "0"], env)
-compileStmt (SAss (Ident name) (ExpVar (Ident aName))) = do
-  env <- ask
-  return ([Add ("%" ++ name) "i32" ("%" ++ aName) "0"], env)
-compileStmt (SAss (Ident name) exp) = compileExp ("%" ++ name) exp
+  v <- return $ getVarFromScope name env
+  case v of
+    Nothing -> return name
+    (Just id) -> do
+      (Just (Local index)) <- return $ getVarLocByID id env
+      return $ getUniqueNameFrom name index
 
-translateStmtI :: (Stmt, Int) -> Int -> Exec ([Stmt], Environment)
-translateStmtI ((SExp exp), index) len = do
+generateAssignVarName :: Bool -> String -> Exec (String, Environment)
+generateAssignVarName True name = do
   env <- ask
-  (tmp, tmpEnv) <- return $ uniqueName env
-  return ([SAss (Ident tmp) exp], tmpEnv)
-translateStmtI (stmt, _) _ = do
+  (newNameIndex, env) <- return $ uniqueNameIndex env
+  (newID, env) <- return $ define name env
+  (_, env) <- return $ allocateAt newID newNameIndex env
+  return $ (getUniqueNameFrom name newNameIndex, env)
+generateAssignVarName False name = do
   env <- ask
-  return ([stmt], env)
+  return (name, env)
 
-translateStmtEndI :: (Stmt, Int) -> Int -> Exec ([Stmt], Environment)
-translateStmtEndI ((SExp exp), index) len = do
+compileStmt :: Bool -> Stmt -> Exec ([LInstruction], Environment)
+compileStmt shouldBeUnique (SAss (Ident name) (ExpLit val)) = do
   env <- ask
-  return ([SAss (Ident "result") exp], env)
-translateStmtEndI (stmt@(SAss (Ident name) _), _) _ =  do
+  (assName, env) <- generateAssignVarName shouldBeUnique name
+  return ([Add ("%" ++ assName) "i32" (show val) "0"], env)
+compileStmt shouldBeUnique (SAss (Ident name) (ExpVar (Ident aName))) = do
   env <- ask
-  return ([stmt, SAss (Ident "result") (ExpVar $ Ident name)], env)
+  aName <- getVarName aName
+  (assName, env) <- generateAssignVarName shouldBeUnique name
+  return ([Add ("%" ++ assName) "i32" ("%" ++ aName) "0"], env)
+compileStmt shouldBeUnique (SAss (Ident name) exp) = do
+  (assName, env) <- generateAssignVarName shouldBeUnique name
+  local (\_ -> env) $ compileExp ("%" ++ assName) exp
+compileStmt _ (SExp exp) = do
+   env <- ask
+   (tmp, tmpEnv) <- return $ uniqueName env
+   (assIns, env) <- local (\_ -> tmpEnv) $ compileStmt False $ SAss (Ident tmp) exp
+   return (assIns ++ [Print $ "%" ++ tmp], tmpEnv)
 
-translateStmt :: [Stmt] -> Exec ([Stmt], Environment)
-translateStmt statements = do
-  len <- return $ length statements
-  env <- ask
-  foldM (\(acc, env) (index, e) -> do
-    (s, e) <- if index == len - 1 then local (\_ -> env) $ translateStmtEndI (e, index) len else local (\_ -> env) $ translateStmtI (e, index) len
-    return (acc ++ s, e)) ([], env) $ zip [0..] statements
+defaultCompilerLLVM :: Program -> Exec (String, Environment)
+defaultCompilerLLVM p = compilerLLVM defaultLLVMCompilerConfiguration p
 
 compile :: Program -> Exec ([LInstruction], Environment)
 compile (Prog statements) = do
   env <- ask
-  (statements, env) <- translateStmt statements
   (pOut, pEnv) <- foldM (\(out, env) ins -> do
-      (newOut, newEnv) <- local (\_ -> env) $ compileStmt ins
+      (newOut, newEnv) <- local (\_ -> env) $ compileStmt True ins
       return (out ++ newOut, newEnv)) ([], env) $ statements
   return (pOut, pEnv)
 
-compilerLLVM :: Program -> Exec (String, Environment)
-compilerLLVM program@(Prog statements) = do
+compilerLLVM :: LLVMCompilerConfiguration -> Program -> Exec (String, Environment)
+compilerLLVM opts program@(Prog statements) = do
   header <- return $ [r|declare void @printInt(i32)
        define i32 @main() {
 |]
-  footer <- return $ (if (length statements > 0) then "call void @printInt(i32 %result)\n" else "") ++ [r|
+  footer <- return $ [r|
        ret i32 0
    }
     |]
@@ -132,5 +152,5 @@ compilerLLVM program@(Prog statements) = do
   (insContent, _) <- return $ llvmInstructions "       " compiledProgram
   content <- return $ header ++ insContent ++ footer
   _ <- liftIO $ putStrLn content
-  _ <- liftIO $ runCompilationTools content
+  _ <- liftIO $ runCompilationTools opts content
   return ("OK", env)
