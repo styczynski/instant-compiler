@@ -10,10 +10,11 @@ getStackSizeForInstruction oldSize (Push v) = getStackSizeForPush oldSize v
 getStackSizeForInstruction oldSize (StoreInt _) = oldSize - 1
 getStackSizeForInstruction oldSize (LoadInt _) = oldSize + 1
 getStackSizeForInstruction oldSize (ConstInt _) = oldSize + 1
+getStackSizeForInstruction oldSize Pop = oldSize - 1
 getStackSizeForInstruction oldSize _ = oldSize
 
 getStackSize :: [JInstruction] -> Int
-getStackSize = foldl getStackSizeForInstruction 0
+getStackSize incs = let (_, v) = foldl (\(cur, max) ins -> let new = getStackSizeForInstruction cur ins in (new, if new > max then new else max)) (0,0) incs in v
 
 getLocalsSizeForInstruction :: JInstruction -> Int
 getLocalsSizeForInstruction (LoadInt index) = index+1

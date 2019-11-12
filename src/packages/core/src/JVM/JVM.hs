@@ -105,7 +105,7 @@ compileStmt (SRAss (Ident name) exp) = do
 compileStmt (SExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
-  return (compiledExp ++ [Pop], env)
+  return (compiledExp ++ [InvokeStatic "com/instant/Runtime/printInt(I)V"], env)
 compileStmt (SRExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
@@ -122,12 +122,12 @@ translateStmts statements =
 
 compile :: Program -> Exec ([JInstruction], Environment)
 compile (Prog statements) = do
-  statements <- return $ translateStmts statements
+  statements <- return $ statements
   env <- ask
   (pOut, pEnv) <- foldM (\(out, env) ins -> do
     (newOut, newEnv) <- local (\_ -> env) $ compileStmt ins
     return (out ++ newOut, newEnv)) ([], env) statements
-  return (pOut ++ (if (length statements > 0) then [InvokeStatic "com/instant/Runtime/printInt(I)V"] else []) ++ [Return], pEnv)
+  return (pOut ++ [Return], pEnv)
 
 defaultCompilerJVM :: Program -> Exec (String, Environment)
 defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p

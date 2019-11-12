@@ -15,3 +15,4 @@ vendor/
 /**/insc_build/
 **/Main.jar
 **/*.tix
+**/test/Generated/
