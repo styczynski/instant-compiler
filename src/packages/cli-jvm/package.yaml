@@ -36,21 +36,38 @@ dependencies:
 - QuickCheck >= 2.12.6.1
 - Glob >= 0.10.0
 - shelly >= 1.8.1
+- test-preprocessor
 - instant-core
 - instant-parser
-- jvm-parser
 
 library:
   source-dirs:
-  - src
+  - lib
   - ../core/src
   - ../parser/parser
+
+tests:
+  jvm-test:
+    main:                Main.hs
+    source-dirs:
+      - test
+      - lib
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    defaults: hspec/hspec@master
+    dependencies:
+      - instant-core
+      - instant-parser
+      - regex-tdfa >= 1.2.3.2
 
 executables:
   inscjvm:
     main:                Main.hs
     source-dirs:
     - src
+    - lib
     dependencies:
     - instant-core
     - instant-parser

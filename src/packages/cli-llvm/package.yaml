@@ -38,7 +38,6 @@ dependencies:
 - shelly >= 1.8.1
 - instant-core
 - instant-parser
-- jvm-parser
 
 library:
   source-dirs:

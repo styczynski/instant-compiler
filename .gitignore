@@ -12,4 +12,6 @@ insc_llvm
 **/stack
 lab/
 vendor/
-insc_build/
+/**/insc_build/
+**/Main.jar
+**/*.tix

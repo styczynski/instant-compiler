@@ -1,4 +1,4 @@
-name:                instant-parser
+name:                test-preprocessor
 version:             0.1.0.0
 github:              "styczynski/ocaml.hs"
 license:             MIT
@@ -19,26 +19,27 @@ build-type: Custom
 
 dependencies:
 - base >= 4.7 && < 5
-- BNFC >= 2.8.1 && <= 2.8.2
-- array >= 0.5.3.0
-- containers >= 0.5.7.1
-- mtl >= 2.2.0.1
-- optparse-applicative >= 0.14.0.0
-- raw-strings-qq >= 1.1
-- para >= 1.0
-- text >= 1.2.3.1
-- split >= 0.2.3.3
-- butcher >= 1.3.1
-- multistate >= 0.7.1.1
-- brittany >= 0.12.0.0
-- deque >= 0.4.2.3
-- strict-list >= 0.1.4
-- QuickCheck >= 2.12.6.1
-- Glob >= 0.10.0
-- shelly >= 1.8.1
+- heterocephalus >= 1.0.5.3
+- optparse-applicative >= 0.14.3.0
+- blaze-markup >= 0.8.2.2
+- bytestring >= 0.10.8.2
+- utf8-string >= 1.0.1.1
+- directory >= 1.3.3.0
+- filepath >= 1.4.2.1
 - regex-tdfa >= 1.2.3.2
+- text >= 1.2.3.1
+- array >= 0.5.3.0
 
 library:
   source-dirs:
-    - ./parser
-executables: {}
+  - lib
+
+executables:
+  test-preprocessor:
+    main:                Main.hs
+    source-dirs:
+    - src
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N

@@ -45,13 +45,17 @@ jasminePushSize (JNumber val)
   | True = 2
 
 jasmineStoreInt :: Int -> String
-jasmineStoreInt index = "istore_" ++ show index
+jasmineStoreInt index
+  | index >= 0 && index <= 3 = "istore_" ++ show index
+  | True = "istore " ++ show index
 
 jasmineConstInt :: String -> String
 jasmineConstInt index = "iconst_" ++ index
 
 jasmineLoadInt :: Int -> String
-jasmineLoadInt index = "iload_" ++ show index
+jasmineLoadInt index
+  | index >= 0 && index <= 3 = "iload_" ++ show index
+  | True = "iload " ++ show index
 
 jasmineOpInt :: JIntOp -> String
 jasmineOpInt Div = "idiv"

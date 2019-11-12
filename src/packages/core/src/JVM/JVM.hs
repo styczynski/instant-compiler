@@ -12,6 +12,7 @@ import Control.Monad.Reader
 import Control.Monad
 import Data.Array
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 import JVM.Jasmine
 import JVM.Inspection
@@ -23,13 +24,26 @@ generateManifest = [r|Manifest-Version: 1.0
 Main-Class: com.instant.Main
 |]
 
-runCompilationTools :: String -> IO ()
-runCompilationTools content = shelly $ silently $ do
+data JVMCompilerConfiguration = JVMCompilerConfiguration {
+  jvmLibLocation :: String,
+  jvmBinLocation :: String,
+  jvmRunProgram :: Bool
+}
+
+defaultJVMCompilerConfiguration :: JVMCompilerConfiguration
+defaultJVMCompilerConfiguration = JVMCompilerConfiguration {
+  jvmLibLocation = ".",
+  jvmBinLocation = ".",
+  jvmRunProgram = False
+}
+
+runCompilationTools :: JVMCompilerConfiguration -> String -> IO ()
+runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/jvm/com/instant"]
   _ <- liftIO $ writeFile "./insc_build/jvm/Main.mf" generateManifest
   _ <- liftIO $ writeFile "./insc_build/jvm/main.j" content
-  bash "cp" ["-rf", "./lib/Runtime.java", "./insc_build/jvm/com/instant/Runtime.java"]
-  bash "java" ["-jar", "./bin/jasmin.jar", "-d", "./insc_build/jvm", "./insc_build/jvm/main.j"]
+  bash "cp" ["-rf", T.pack $ (jvmLibLocation opts) ++ "/lib/Runtime.java", "./insc_build/jvm/com/instant/Runtime.java"]
+  bash "java" ["-jar", T.pack $ (jvmBinLocation opts) ++ "/bin/jasmin.jar", "-d", "./insc_build/jvm", "./insc_build/jvm/main.j"]
   bash "javac" ["./insc_build/jvm/com/instant/Runtime.java"]
   cd "./insc_build/jvm"
   bash "jar" ["cmf", "Main.mf", "Main.jar", "./com/instant/Main.class", "./com/instant/Runtime.class"]
@@ -115,8 +129,17 @@ compile (Prog statements) = do
     return (out ++ newOut, newEnv)) ([], env) statements
   return (pOut ++ (if (length statements > 0) then [InvokeStatic "com/instant/Runtime/printInt(I)V"] else []) ++ [Return], pEnv)
 
-compilerJVM :: Program -> Exec (String, Environment)
-compilerJVM program = do
+defaultCompilerJVM :: Program -> Exec (String, Environment)
+defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p
+
+postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
+postCompile opts = do
+  env <- ask
+  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", "./Main.jar"] else return ":)"
+  return (T.unpack out, env)
+
+compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
+compilerJVM opts program = do
   header <- return $ [r|.bytecode 57.0
      .source Main.java
      .class public com/instant/Main
@@ -142,5 +165,5 @@ compilerJVM program = do
   (insContent, _) <- return $ jasmineInstructions "       " $ [ Directive $ LimitStack stackLimit, Directive $ LimitLocals localsLimit ] ++ compiledProgram
   content <- return $ header ++ insContent ++ footer
   _ <- liftIO $ putStrLn content
-  _ <- liftIO $ runCompilationTools content
-  return (":)", env)
+  _ <- liftIO $ runCompilationTools opts content
+  local (\_ -> env) $ postCompile opts

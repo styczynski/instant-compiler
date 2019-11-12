@@ -37,7 +37,6 @@ dependencies:
 - Glob >= 0.10.0
 - shelly >= 1.8.1
 - instant-parser
-- jvm-parser
 
 library:
   depdendencies:

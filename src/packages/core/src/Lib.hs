@@ -33,5 +33,5 @@ run compiler v s = do
   initEnv <- runInitEmpty
   runWith compiler v s initEnv
 
-runJVM :: Verbosity -> String -> IO ExecutionResult
-runJVM = run compilerJVM
+runJVM :: JVMCompilerConfiguration -> Verbosity -> String -> IO ExecutionResult
+runJVM opts = run $ compilerJVM opts
