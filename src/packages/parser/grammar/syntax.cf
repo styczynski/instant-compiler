@@ -3,8 +3,6 @@ comment "(*" "*)" ;
 Prog. Program ::= [Stmt] ;
 SAss. Stmt ::= Ident "=" Exp;
 SExp. Stmt ::= Exp ;
-internal SRExp. Stmt ::= Exp ;
-internal SRAss. Stmt ::= Ident "=" Exp;
 separator Stmt ";" ;
 
 ExpAdd.            Exp1   ::= Exp2 "+"  Exp1 ;

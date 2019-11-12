@@ -108,13 +108,6 @@ compileStmt (SAss (Ident name) exp) = do
   (loc, env1) <- return $ defineAndAlloc name env
   out <- return $ compiledExp ++ [locationToStoreInst loc]
   return (out, env1)
-compileStmt (SRAss (Ident name) exp) = do
-  env <- ask
-  (compiledExp, _) <- compileExp exp
-  (loc, env1) <- return $ defineAndAlloc name env
-  (compiledExp0, env2) <- local (\_ -> env1) $ compileStmt $ SRExp exp
-  out <- return $ compiledExp ++ [locationToStoreInst loc] ++ compiledExp0
-  return (out, env2)
 compileStmt (SExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
@@ -123,15 +116,6 @@ compileStmt (SRExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
   return (compiledExp, env)
-
-translateStmtsEndI :: Stmt -> Stmt
-translateStmtsEndI (SExp e) = SRExp e
-translateStmtsEndI (SAss n e) = SRAss n e
-
-translateStmts :: [Stmt] -> [Stmt]
-translateStmts statements =
-  let len = length statements in
-  map (\(i, e) -> if i == len - 1 then translateStmtsEndI e else e) $ zip [0..] statements
 
 compile :: Program -> Exec ([JInstruction], Environment)
 compile (Prog statements) = do
