@@ -47,7 +47,7 @@ STACK_TARGET_DIR="stack-$STACK_VERSION"
 
 cd $DOWNLOADS_DIR
 
-#curl -L -o $STACK_DIST_FILENAME $STACK_DIST_URL  
+curl -L -o $STACK_DIST_FILENAME $STACK_DIST_URL  
 tar xvfz $STACK_DIST_FILENAME
 
 # in case if error like this: 
