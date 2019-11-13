@@ -134,7 +134,7 @@ postCompile opts = do
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerJVM opts program = do
   programClassName <- return $ capitalized $ jvmProgramName opts
-  header <- return $ toString $ renderMarkup $ [compileText|.bytecode 57.0
+  header <- return $ toString $ renderMarkup $ [compileText|.bytecode 52.0
      .source #{programClassName}.java
      .class public com/instant/#{programClassName}
      .super java/lang/Object
