@@ -79,7 +79,7 @@ cd $DOWNLOADS_DIR
 rm -rfd stack-$STACK_VERSION*
 
 # install ghc
-stack setup
+./stack setup
 
 # link stack
 ln -s "$HOME/Development/bin/stack/stack" ./stack 2> /dev/null > /dev/null
