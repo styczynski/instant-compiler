@@ -53,7 +53,7 @@ main = mainEntry =<< execParser opts
   where
     opts = info (parseMainArgs <**> helper)
       ( fullDesc
-      <> progDesc "Tiny Ocaml interprter for Haskell"
+      <> progDesc "Haskell HSpec suites generator for Instant language"
       <> header "Piotr Styczynski 2019" )
 
 mainEntry :: MainArgs -> IO ()

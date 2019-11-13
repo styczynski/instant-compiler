@@ -1,6 +1,6 @@
 name:                instant-cli-jvm
 version:             0.1.0.0
-github:              "styczynski/ocaml.hs"
+github:              "styczynski/instant-compiler"
 license:             MIT
 author:              "Piotr Styczyński"
 maintainer:          "piotr@styczynski.in"
@@ -9,10 +9,10 @@ copyright:           "2019 Piotr Styczyński"
 extra-source-files:
 - README.md
 
-synopsis:            Interpreter for Ocaml language subset
-category:            Interpreter
+synopsis:            Compiler for Instant language
+category:            Compiler
 
-description:         Please see the README on GitHub at <https://github.com/styczynski/ocaml.hs#readme>
+description:         Please see the README on GitHub at <https://github.com/styczynski/instant-compiler#readme>
 
 build-type: Custom
 

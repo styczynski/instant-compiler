@@ -52,7 +52,7 @@ executeStackBuild cmd path = do
 
 handleStackBuildOutput :: String -> IO (Maybe String)
 handleStackBuildOutput output = do
-    matches <- return $ filter (\(_, _, _, m) -> length m > 0) $ map (\line -> (line =~ (".*(OCAMLHS_BUILD_DIRTY).*" :: String)) :: (String, String, String, [String])) $ lines output
+    matches <- return $ filter (\(_, _, _, m) -> length m > 0) $ map (\line -> (line =~ (".*(BUILDTOOLS_BUILD_DIRTY).*" :: String)) :: (String, String, String, [String])) $ lines output
     result <- return $ case matches of
         ((_, _, _, h:t):_) -> Nothing
         _ -> Just "ERROR"
@@ -119,7 +119,7 @@ message = liftIO . putStrLn
 
 finish :: Action ()
 finish = do
-    liftIO $ setEnv "OCAMLHS_BUILD_DIRTY" "TRUE"
+    liftIO $ setEnv "BUILDTOOLS_BUILD_DIRTY" "TRUE"
     message "Done"
 
 cp :: FilePath -> FilePath -> Action ()
@@ -127,8 +127,8 @@ cp src dest = liftIO $ shelly $ Shelly.cp (decodeString src) (decodeString dest)
 
 executeTasks :: Rules () -> IO ()
 executeTasks taskDefs = do
-    setEnv "OCAMLHS_BUILD_DIRTY" "FALSE"
+    setEnv "BUILDTOOLS_BUILD_DIRTY" "FALSE"
     shelly $ silently $ do
         liftIO $ shake shakeOptions{shakeFiles="_build"} taskDefs
-    buildDirtyEnv <- getEnv "OCAMLHS_BUILD_DIRTY"
-    if buildDirtyEnv == "TRUE" then ioError $ userError "OCAMLHS_BUILD_DIRTY" else return ()
+    buildDirtyEnv <- getEnv "BUILDTOOLS_BUILD_DIRTY"
+    if buildDirtyEnv == "TRUE" then ioError $ userError "BUILDTOOLS_BUILD_DIRTY" else return ()

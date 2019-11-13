@@ -10,5 +10,5 @@ main = mainEntry =<< execParser opts
   where
     opts = info (parseMainArgs <**> helper)
       ( fullDesc
-      <> progDesc "Tiny Ocaml interprter for Haskell"
+      <> progDesc "Instant compiler for LLVM backend"
       <> header "Piotr Styczynski 2019" )
