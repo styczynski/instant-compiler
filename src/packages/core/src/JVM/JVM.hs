@@ -52,14 +52,20 @@ defaultJVMCompilerConfiguration = JVMCompilerConfiguration {
 runCompilationTools :: JVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/jvm/com/instant"]
+  _ <- liftIO $ putStrLn "Generate Manifest file..."
   _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".mf") $ generateManifest opts
   _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j") content
+  _ <- liftIO $ putStrLn "Prepare runtime boilerplate..."
   bash "cp" ["-rf", T.pack ((jvmLibLocation opts) ++ "/lib/Runtime.java"), "./insc_build/jvm/com/instant/Runtime.java"]
+  _ <- liftIO $ putStrLn "Compile with Jasmine..."
   bash "java" ["-jar", T.pack ((jvmBinLocation opts) ++ "/bin/jasmin.jar"), "-d", "./insc_build/jvm", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".j")]
+  _ <- liftIO $ putStrLn "Compile runtime boilerplate..."
   bash "javac" ["./insc_build/jvm/com/instant/Runtime.java"]
   cd "./insc_build/jvm"
+  _ <- liftIO $ putStrLn "Create executable jar..."
   bash "jar" ["cmf", T.pack ((capitalized $ jvmProgramName opts) ++ ".mf"), T.pack ((capitalized $ jvmProgramName opts) ++ ".jar"), T.pack ("./com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), "./com/instant/Runtime.class"]
   cd "../.."
+  _ <- liftIO $ putStrLn "Finalize..."
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), T.pack ("./" ++ (jvmProgramName opts) ++ ".class")]
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".jar"), "."]
   return ()
@@ -133,6 +139,7 @@ postCompile opts = do
 
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerJVM opts program = do
+  _ <- liftIO $ putStrLn "Compile Instant code..."
   programClassName <- return $ capitalized $ jvmProgramName opts
   header <- return $ toString $ renderMarkup $ [compileText|.bytecode 52.0
      .source #{programClassName}.java
@@ -158,6 +165,5 @@ compilerJVM opts program = do
   localsLimit <- return $ getLocalsSize compiledProgram
   (insContent, _) <- return $ jasmineInstructions "       " $ [ Directive $ LimitStack stackLimit, Directive $ LimitLocals localsLimit ] ++ compiledProgram
   content <- return $ header ++ insContent ++ footer
-  _ <- liftIO $ putStrLn content
   _ <- liftIO $ runCompilationTools opts content
   local (\_ -> env) $ postCompile opts
