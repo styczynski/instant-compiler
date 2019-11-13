@@ -112,10 +112,6 @@ compileStmt (SExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
   return (compiledExp ++ [InvokeStatic "com/instant/Runtime/printInt(I)V"], env)
-compileStmt (SRExp exp) = do
-  env <- ask
-  (compiledExp, _) <- compileExp exp
-  return (compiledExp, env)
 
 compile :: Program -> Exec ([JInstruction], Environment)
 compile (Prog statements) = do
