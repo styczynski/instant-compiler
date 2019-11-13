@@ -53,10 +53,6 @@ tests:
     source-dirs:
       - test
       - lib
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
     defaults: hspec/hspec@master
     dependencies:
       - instant-core
@@ -72,7 +68,3 @@ executables:
     dependencies:
     - instant-core
     - instant-parser
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
