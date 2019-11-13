@@ -79,7 +79,9 @@ cd $DOWNLOADS_DIR
 rm -rfd stack-$STACK_VERSION*
 
 # install ghc
-./stack setup
+d=$(pwd)
+echo "Now call stack at ${d}"
+./stack setup --reinstall || true
 
 # link stack
 ln -s "$HOME/Development/bin/stack/stack" ./stack 2> /dev/null > /dev/null
