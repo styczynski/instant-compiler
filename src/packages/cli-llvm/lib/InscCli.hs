@@ -51,7 +51,8 @@ execContents compiler v = getContents >>= runBlock compiler v
 
 data MainArgs = MainArgs
   { file :: String
-  , verbosity :: Int }
+  , verbosity :: Int
+  , shouldRun :: Bool }
 
 parseMainArgs :: Parser MainArgs
 parseMainArgs = MainArgs
@@ -62,14 +63,17 @@ parseMainArgs = MainArgs
     <> showDefault
     <> value 1
     <> metavar "INT" )
+  <*> switch (short 'r' <>
+     long "run" <>
+     help "Run program after compilation")
 
-compilerConf :: (Maybe String) -> LLVMCompilerConfiguration
-compilerConf inputFile = case inputFile of
-  Nothing -> defaultLLVMCompilerConfiguration
-  (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = (takeBaseName path), llvmOutputPath = (takeDirectory path) }
+compilerConf :: (Maybe String) -> Bool -> LLVMCompilerConfiguration
+compilerConf inputFile shouldRun = case inputFile of
+  Nothing -> defaultLLVMCompilerConfiguration { llvmRunProgram = shouldRun }
+  (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = (takeBaseName path), llvmOutputPath = (takeDirectory path), llvmRunProgram = shouldRun }
 
 mainEntry :: MainArgs -> IO ()
-mainEntry (MainArgs file verbosity) = case (verbosity, file) of
-  (v, "stdin") -> execContents (compilerLLVM $ compilerConf Nothing) v
-  (v, src) -> runFile (compilerLLVM $ compilerConf $ Just src) v src
+mainEntry (MainArgs file verbosity shouldRun) = case (verbosity, file, shouldRun) of
+  (v, "stdin", shouldRun) -> execContents (compilerLLVM $ compilerConf Nothing shouldRun) v
+  (v, src, shouldRun) -> runFile (compilerLLVM $ compilerConf (Just src) shouldRun) v src
 mainEntry _ = return ()

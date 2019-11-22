@@ -75,10 +75,10 @@ After you build the project you can run:
     $ java -cp "$(pwd)/foo/:$(pwd)/lib" bar
 ```
 
-This will compile the input file to JVM bytecode. The command will result in creation of:
- * runnable Jar file `Code.jar` (you can run in calling `java -jar Code.jar`)
- * `code.class` file with compiled main class
- * `code.j` file with Jasmine assembler code
+This will compile the input file to JVM bytecode and run it. The command will result in creation of:
+ * runnable Jar file `./foo/bar.jar` (you can run in calling `java -jar ./foo/bar.jar`)
+ * `./foo/bar.class` file with compiled main class
+ * `./foo/bar.j` file with Jasmine assembler code
 
 You can also use the LLVM backend:
 ```
@@ -86,21 +86,24 @@ You can also use the LLVM backend:
     $ lli --extra-module $(pwd)/lib/runtime.ll $(pwd)/foo/bar.bc
 ```
 
-This will compile the input file to LLVM bytecode. The command will result in creation of:
- * executable binary in `insc_build/llvm/` (you can run it calling `./insc_build/llvm/code`)
- * LLVM human-readable bytecode inside `code.ll`
- * Runnable LLVM code in `code.bc` file
+This will compile the input file to LLVM bytecode and run it with `lli`. The command will result in creation of:
+ * executable binary in `insc_build/llvm/` (you can run it calling `./insc_build/llvm/bar`)
+ * LLVM human-readable bytecode inside `./foo/bar.ll`
+ * Runnable LLVM code in `./foo/bar.bc` file
  
 ## Tests
  
 As mentioned early the tests are simply inputs from `examples/` directory with special kinds of comments.
 Those files are translated to HSpec suites and executed.
  
-You can manually run those files as ordinary files with Instant code.
+You can manually compile and run those files as ordinary files with Instant code.
  
 ```bash
-    $ insc_jvm -f ./examples/good/Basic01.ins
+    $ insc_jvm ./examples/good/Basic01.ins -r
+    $ insc_llvm ./examples/good/Basic01.ins -r
 ```
+
+`-r` flag runs the compiled file after compilation ends.
 
 ## Used tools and libraries
 

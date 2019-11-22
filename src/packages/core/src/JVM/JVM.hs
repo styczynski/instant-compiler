@@ -66,7 +66,7 @@ runCompilationTools opts content = shelly $ silently $ do
   _ <- liftIO $ putStrLn "Finalize..."
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".class"), T.pack (jvmOutputPath opts)]
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j"), T.pack (jvmOutputPath opts)]
-  _ <- if (jvmRunProgram opts) then bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".jar"), T.pack (jvmOutputPath opts)] else return $ T.pack ""
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".jar"), T.pack (jvmOutputPath opts)]
   return ()
 
 optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], Int, Bool)
@@ -133,7 +133,7 @@ defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p
 postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ((jvmOutputPath opts) ++ "/" ++ (jvmProgramName opts) ++ ".jar")] else return ":)"
+  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ((jvmOutputPath opts) ++ "/" ++ (jvmProgramName opts) ++ ".jar")] else return "Post-compile hook finished."
   return (T.unpack out, env)
 
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)

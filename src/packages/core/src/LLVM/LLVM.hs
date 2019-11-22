@@ -53,7 +53,7 @@ runCompilationTools opts content = shelly $ silently $ do
 postCompile :: LLVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (llvmRunProgram opts) then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts))) [] else return "Done"
+  out <- if (llvmRunProgram opts) then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts))) [] else return "Post-compile hook finished."
   return (T.unpack out, env)
 
 uniqueNameForExpStack :: Exp -> Exec (String, Environment)

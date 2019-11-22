@@ -52,7 +52,8 @@ execContents compiler v = getContents >>= runBlock compiler v
 
 data MainArgs = MainArgs
   { file :: String
-  , verbosity :: Int }
+  , verbosity :: Int
+  , shouldRun :: Bool }
 
 parseMainArgs :: Parser MainArgs
 parseMainArgs = MainArgs
@@ -63,14 +64,17 @@ parseMainArgs = MainArgs
     <> showDefault
     <> value 1
     <> metavar "INT" )
+  <*> switch (short 'r' <>
+     long "run" <>
+     help "Run program after compilation")
 
-compilerConf :: (Maybe String) -> JVMCompilerConfiguration
-compilerConf inputFile = case inputFile of
-  Nothing -> defaultJVMCompilerConfiguration
-  (Just path) -> defaultJVMCompilerConfiguration { jvmProgramName = (takeBaseName path), jvmOutputPath = (takeDirectory path) }
+compilerConf :: (Maybe String) -> Bool -> JVMCompilerConfiguration
+compilerConf inputFile shouldRun = case inputFile of
+  Nothing -> defaultJVMCompilerConfiguration { jvmRunProgram = shouldRun }
+  (Just path) -> defaultJVMCompilerConfiguration { jvmProgramName = (takeBaseName path), jvmOutputPath = (takeDirectory path), jvmRunProgram = shouldRun }
 
 mainEntry :: MainArgs -> IO ()
-mainEntry (MainArgs file verbosity) = case (verbosity, file) of
-  (v, "stdin") -> execContents (compilerJVM $ compilerConf Nothing) v
-  (v, src) -> runFile (compilerJVM $ compilerConf $ Just src) v src
+mainEntry (MainArgs file verbosity shouldRun) = case (verbosity, file, shouldRun) of
+  (v, "stdin", shouldRun) -> execContents (compilerJVM $ compilerConf Nothing shouldRun) v
+  (v, src, shouldRun) -> runFile (compilerJVM $ compilerConf (Just src) shouldRun) v src
 mainEntry _ = return ()
