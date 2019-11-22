@@ -172,6 +172,13 @@ packages:
       sha256: 94c160d3cba160be807fc2957f539453660cf64bd6cb29879aba82424d03527e
   original:
     hackage: utf8-string-1.0.1.1
+- completed:
+    hackage: filepath-1.4.2.1@sha256:0a5334c8d6eb9b00cba7a07f2c4141d395d0b430861d04866c6a8d373aea59c1,2245
+    pantry-tree:
+      size: 681
+      sha256: acea875d61ee692b87eef45d1e6f95e87bdb2289395c82d3e3972ea6e42fde50
+  original:
+    hackage: filepath-1.4.2.1
 snapshots:
 - completed:
     size: 498180

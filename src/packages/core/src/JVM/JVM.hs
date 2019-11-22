@@ -133,7 +133,7 @@ defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p
 postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ((jvmOutputPath opts) ++ (jvmProgramName opts) ++ ".jar")] else return ":)"
+  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ((jvmOutputPath opts) ++ "/" ++ (jvmProgramName opts) ++ ".jar")] else return ":)"
   return (T.unpack out, env)
 
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
