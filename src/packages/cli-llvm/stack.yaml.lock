@@ -151,6 +151,27 @@ packages:
       sha256: 31ec7cb98db424c23d7c2cf9caa80c1246d8bdc75e3c07e40131fb8e61b55c8a
   original:
     hackage: shelly-1.8.1
+- completed:
+    hackage: heterocephalus-1.0.5.3@sha256:26bf4a919c48e7cbf4b9676bf56d6a2ef5c45ff1f3cdb821bc11d8709e0f9360,2956
+    pantry-tree:
+      size: 868
+      sha256: 6e5460dc44368253218b4ee4af3449d3cdf07a14719650042e378c89d0f72cc4
+  original:
+    hackage: heterocephalus-1.0.5.3
+- completed:
+    hackage: blaze-markup-0.8.2.3@sha256:2d74dbb26ee73a0aaeeb169bf555d26494e2b622867a7507daf53cd3a45c4792,2184
+    pantry-tree:
+      size: 818
+      sha256: 72cfa3d654ef7cc1f10e3bb4cbe44a06caf57b2e21329151646fe23af157771d
+  original:
+    hackage: blaze-markup-0.8.2.3
+- completed:
+    hackage: utf8-string-1.0.1.1@sha256:68cc6cf665e7212334a51b63d6936daeaca023b2cfe8637d130acfe95f91700b,1151
+    pantry-tree:
+      size: 546
+      sha256: 94c160d3cba160be807fc2957f539453660cf64bd6cb29879aba82424d03527e
+  original:
+    hackage: utf8-string-1.0.1.1
 snapshots:
 - completed:
     size: 498180

@@ -20,14 +20,16 @@ import qualified Data.Text as T
 data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmLibLocation :: String,
   llvmRunProgram :: Bool,
-  llvmProgramName :: String
+  llvmProgramName :: String,
+  llvmOutputPath :: String
 }
 
 defaultLLVMCompilerConfiguration :: LLVMCompilerConfiguration
 defaultLLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmLibLocation = ".",
   llvmRunProgram = False,
-  llvmProgramName = "main"
+  llvmProgramName = "main",
+  llvmOutputPath = "."
 }
 
 runCompilationTools :: LLVMCompilerConfiguration -> String -> IO ()
@@ -44,14 +46,14 @@ runCompilationTools opts content = shelly $ silently $ do
   bash "llc" ["-o", "./insc_build/llvm/runtime.s", "./insc_build/llvm/runtime.bc"]
   bash "clang" ["-o", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts)), T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".s"), "./insc_build/llvm/runtime.s"]
   _ <- liftIO $ putStrLn "Finalize..."
-  bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".ll"), "."]
-  bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".bc"), "."]
+  bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".ll"), T.pack (llvmOutputPath opts)]
+  bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts) ++ ".bc"), T.pack (llvmOutputPath opts)]
   return ()
 
 postCompile :: LLVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (llvmRunProgram opts) then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts))) [] else return ":)"
+  out <- if (llvmRunProgram opts) then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts))) [] else return "Done"
   return (T.unpack out, env)
 
 uniqueNameForExpStack :: Exp -> Exec (String, Environment)
@@ -167,6 +169,5 @@ compilerLLVM opts program@(Prog statements) = do
   (compiledProgram, env) <- compile program
   (insContent, _) <- return $ llvmInstructions "       " compiledProgram
   content <- return $ header ++ insContent ++ footer
-  _ <- liftIO $ putStrLn content
   _ <- liftIO $ runCompilationTools opts content
   local (\_ -> env) $ postCompile opts

@@ -71,7 +71,8 @@ Please note that on students machine there is no Stack installation. To use Stac
 
 After you build the project you can run:
 ```
-    $ insc_jvm -f code.ins
+    $ insc_jvm ./foo/bar.ins
+    $ java -cp "$(pwd)/foo/:$(pwd)/lib" bar
 ```
 
 This will compile the input file to JVM bytecode. The command will result in creation of:
@@ -81,7 +82,8 @@ This will compile the input file to JVM bytecode. The command will result in cre
 
 You can also use the LLVM backend:
 ```
-    $ insc_llvm -f code.ins
+    $ insc_llvm ./foo/bar.ins
+    $ lli --extra-module $(pwd)/lib/runtime.ll $(pwd)/foo/bar.bc
 ```
 
 This will compile the input file to LLVM bytecode. The command will result in creation of:

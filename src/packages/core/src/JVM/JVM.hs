@@ -25,20 +25,17 @@ import JVM.OptimizeStackOrder
 
 import qualified Data.Char as Char
 
-capitalized :: String -> String
-capitalized (head:tail) = Char.toUpper head : map Char.toLower tail
-capitalized [] = []
-
 generateManifest :: JVMCompilerConfiguration -> String
-generateManifest opts = let programClassName = capitalized $ jvmProgramName opts in toString $ renderMarkup $ [compileText|Manifest-Version: 1.0
-Main-Class: com.instant.#{programClassName}
+generateManifest opts = let programClassName = jvmProgramName opts in toString $ renderMarkup $ [compileText|Manifest-Version: 1.0
+Main-Class: #{programClassName}
 |]
 
 data JVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmLibLocation :: String,
   jvmBinLocation :: String,
   jvmRunProgram :: Bool,
-  jvmProgramName :: String
+  jvmProgramName :: String,
+  jvmOutputPath :: String
 }
 
 defaultJVMCompilerConfiguration :: JVMCompilerConfiguration
@@ -46,28 +43,30 @@ defaultJVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmLibLocation = ".",
   jvmBinLocation = ".",
   jvmRunProgram = False,
-  jvmProgramName = "main"
+  jvmProgramName = "main",
+  jvmOutputPath = "."
 }
 
 runCompilationTools :: JVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
-  bash "mkdir" ["-p", "./insc_build/jvm/com/instant"]
+  bash "mkdir" ["-p", "./insc_build/jvm"]
   _ <- liftIO $ putStrLn "Generate Manifest file..."
-  _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".mf") $ generateManifest opts
+  _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".mf") $ generateManifest opts
   _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j") content
   _ <- liftIO $ putStrLn "Prepare runtime boilerplate..."
-  bash "cp" ["-rf", T.pack ((jvmLibLocation opts) ++ "/lib/Runtime.java"), "./insc_build/jvm/com/instant/Runtime.java"]
+  bash "cp" ["-rf", T.pack ((jvmLibLocation opts) ++ "/lib/Runtime.java"), "./insc_build/jvm/Runtime.java"]
   _ <- liftIO $ putStrLn "Compile with Jasmine..."
-  bash "java" ["-jar", T.pack ((jvmBinLocation opts) ++ "/bin/jasmin.jar"), "-d", "./insc_build/jvm", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".j")]
+  bash "java" ["-jar", T.pack ((jvmBinLocation opts) ++ "/lib/jasmin.jar"), "-d", "./insc_build/jvm", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".j")]
   _ <- liftIO $ putStrLn "Compile runtime boilerplate..."
-  bash "javac" ["./insc_build/jvm/com/instant/Runtime.java"]
+  bash "javac" ["./insc_build/jvm/Runtime.java"]
   cd "./insc_build/jvm"
   _ <- liftIO $ putStrLn "Create executable jar..."
-  bash "jar" ["cmf", T.pack ((capitalized $ jvmProgramName opts) ++ ".mf"), T.pack ((capitalized $ jvmProgramName opts) ++ ".jar"), T.pack ("./com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), "./com/instant/Runtime.class"]
+  bash "jar" ["cmf", T.pack ((jvmProgramName opts) ++ ".mf"), T.pack ((jvmProgramName opts) ++ ".jar"), T.pack ("./" ++ (jvmProgramName opts) ++ ".class"), "./Runtime.class"]
   cd "../.."
   _ <- liftIO $ putStrLn "Finalize..."
-  bash "cp" ["-rf", T.pack ("./insc_build/jvm/com/instant/" ++ (capitalized $ jvmProgramName opts) ++ ".class"), T.pack ("./" ++ (jvmProgramName opts) ++ ".class")]
-  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (capitalized $ jvmProgramName opts) ++ ".jar"), "."]
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".class"), T.pack (jvmOutputPath opts)]
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j"), T.pack (jvmOutputPath opts)]
+  _ <- if (jvmRunProgram opts) then bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".jar"), T.pack (jvmOutputPath opts)] else return $ T.pack ""
   return ()
 
 optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], Int, Bool)
@@ -117,7 +116,7 @@ compileStmt (SAss (Ident name) exp) = do
 compileStmt (SExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
-  return (compiledExp ++ [InvokeStatic "com/instant/Runtime/printInt(I)V"], env)
+  return (compiledExp ++ [InvokeStatic "Runtime/printInt(I)V"], env)
 
 compile :: Program -> Exec ([JInstruction], Environment)
 compile (Prog statements) = do
@@ -134,16 +133,16 @@ defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p
 postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ("./" ++ (capitalized $ jvmProgramName opts) ++ ".jar")] else return ":)"
+  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ((jvmOutputPath opts) ++ (jvmProgramName opts) ++ ".jar")] else return ":)"
   return (T.unpack out, env)
 
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerJVM opts program = do
   _ <- liftIO $ putStrLn "Compile Instant code..."
-  programClassName <- return $ capitalized $ jvmProgramName opts
+  programClassName <- return $ jvmProgramName opts
   header <- return $ toString $ renderMarkup $ [compileText|.bytecode 52.0
      .source #{programClassName}.java
-     .class public com/instant/#{programClassName}
+     .class public #{programClassName}
      .super java/lang/Object
 
      .method public <init>()V

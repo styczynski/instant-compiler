@@ -6,6 +6,7 @@ import Data.Semigroup ((<>))
 import System.IO ( stdin, stderr, hPutStrLn, hGetContents )
 import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
+import System.FilePath
 
 import Lib
 import Compiler.Compiler
@@ -49,27 +50,26 @@ runBlock = runBlockI
 execContents compiler v = getContents >>= runBlock compiler v
 
 data MainArgs = MainArgs
-  { verbosity :: Int
-  , file :: String }
+  { file :: String
+  , verbosity :: Int }
 
 parseMainArgs :: Parser MainArgs
 parseMainArgs = MainArgs
-  <$> option auto
+  <$> argument str (metavar "FILE")
+  <*> option auto
     ( long "verbosity"
     <> help "Set verbosity level of the program"
     <> showDefault
     <> value 1
     <> metavar "INT" )
-  <*> strOption
-      ( long "file"
-      <> short 'f'
-      <> showDefault
-      <> value "stdin"
-      <> help "File to load or stdin to load standard input"
-      <> metavar "FILENAME" )
+
+compilerConf :: (Maybe String) -> LLVMCompilerConfiguration
+compilerConf inputFile = case inputFile of
+  Nothing -> defaultLLVMCompilerConfiguration
+  (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = (takeBaseName path), llvmOutputPath = (takeDirectory path) }
 
 mainEntry :: MainArgs -> IO ()
-mainEntry (MainArgs verbosity file) = case (verbosity, file) of
-  (v, "stdin") -> execContents defaultCompilerLLVM v
-  (v, src) -> runFile defaultCompilerLLVM v src
+mainEntry (MainArgs file verbosity) = case (verbosity, file) of
+  (v, "stdin") -> execContents (compilerLLVM $ compilerConf Nothing) v
+  (v, src) -> runFile (compilerLLVM $ compilerConf $ Just src) v src
 mainEntry _ = return ()
