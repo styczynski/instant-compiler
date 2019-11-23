@@ -34,8 +34,8 @@ data JMethod =
 
 jasminePush :: JConstant -> String
 jasminePush (JNumber val)
-  | val >= 0 && val <= 255 = "bipush " ++ show val
-  | val > 255 && val <= 65535 = "sipush" ++ show (div val 256) ++ " " ++ show (mod val 256)
+  | val >= -128 && val <= 127 = "bipush " ++ show val
+  | val > -32768 && val <= 32767 = "sipush " ++ show val
   | True = "ldc " ++ show val
 
 jasminePushSize :: JConstant -> Int
