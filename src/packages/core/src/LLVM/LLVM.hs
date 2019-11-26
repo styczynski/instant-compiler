@@ -136,14 +136,18 @@ compileStmt shouldBeUnique (SAss (Ident name) (ExpVar (Ident aName))) = do
   aName <- getVarName aName
   (assName, env) <- generateAssignVarName shouldBeUnique name
   return ([Add ("%" ++ assName) "i32" ("%" ++ aName) "0"], env)
+-- this fails
 compileStmt shouldBeUnique (SAss (Ident name) exp) = do
+  oldEnv <- ask
   (assName, env) <- generateAssignVarName shouldBeUnique name
-  local (\_ -> env) $ compileExp ("%" ++ assName) exp
+  envScoped <- return $ env { scope = (scope oldEnv) }
+  (retCode, retEnv) <- local (\_ -> envScoped) $ compileExp ("%" ++ assName) exp
+  return (retCode, retEnv { scope = (M.union (scope env) (scope retEnv)) })
 compileStmt _ (SExp exp) = do
    env <- ask
    (tmp, tmpEnv) <- return $ uniqueName env
    (assIns, env) <- local (\_ -> tmpEnv) $ compileStmt False $ SAss (Ident tmp) exp
-   return (assIns ++ [Print $ "%" ++ tmp], tmpEnv)
+   return (assIns ++ [Print $ "%" ++ tmp], env)
 
 defaultCompilerLLVM :: Program -> Exec (String, Environment)
 defaultCompilerLLVM p = compilerLLVM defaultLLVMCompilerConfiguration p

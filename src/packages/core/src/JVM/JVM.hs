@@ -21,8 +21,6 @@ import qualified Data.Text as T
 import JVM.Jasmine
 import JVM.Inspection
 
-import JVM.OptimizeStackOrder
-
 import qualified Data.Char as Char
 
 generateManifest :: JVMCompilerConfiguration -> String
@@ -73,7 +71,7 @@ optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], I
 optimizeExpStackBiAlloc l r = do
   (ol, dl) <- compileExp l
   (or, dr) <- compileExp r
-  return $ if dl <= dr then (ol, or, dr+1, True) else (or, ol, dl+1, False)
+  return $ if dl <= dr then (ol, or, dr+1, False) else (or, ol, dl+1, True)
 
 makeSwap :: Bool -> [JInstruction]
 makeSwap False = []
@@ -110,9 +108,9 @@ compileStmt :: Stmt -> Exec ([JInstruction], Environment)
 compileStmt (SAss (Ident name) exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
-  (loc, env1) <- return $ defineAndAlloc name env
+  (loc, env2) <- return $ defineAndAlloc name env
   out <- return $ compiledExp ++ [locationToStoreInst loc]
-  return (out, env1)
+  return (out, env2)
 compileStmt (SExp exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
@@ -159,7 +157,7 @@ compilerJVM opts program = do
   footer <- return $ [r|
      .end method
 |]
-  (compiledProgram, env) <- compile $ optimizeStackOrder program
+  (compiledProgram, env) <- compile program
   stackLimit <- return $ getStackSize compiledProgram
   localsLimit <- return $ getLocalsSize compiledProgram
   (insContent, _) <- return $ jasmineInstructions "       " $ [ Directive $ LimitStack stackLimit, Directive $ LimitLocals localsLimit ] ++ compiledProgram
