@@ -140,6 +140,7 @@ compilerJVM opts program = do
   programClassName <- return $ jvmProgramName opts
   header <- return $ toString $ renderMarkup $ [compileText|.bytecode 52.0
      .source #{programClassName}.java
+     .version 52
      .class public #{programClassName}
      .super java/lang/Object
 
