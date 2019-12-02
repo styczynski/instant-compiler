@@ -8,6 +8,7 @@ import           Control.Monad.Reader
 import           Data.Map.Lazy
 import qualified Data.Map.Lazy as M
 import           Compiler.Compiler
+import           Inference.Inferencer
 
 type Analyzer = Program -> Exec Bool
 
