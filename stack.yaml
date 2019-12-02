@@ -33,7 +33,6 @@ packages:
 - src/packages/test-preprocessor
 - src/packages/parser
 - src/packages/core
-- src/packages/cli-jvm
 - src/packages/cli-llvm
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as

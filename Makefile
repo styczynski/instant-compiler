@@ -1,4 +1,4 @@
-STACK := $(shell echo "$$HOME/Development/bin/stack/stack")
+STACK := $(shell ./scripts/get_stack.sh)
 
 all: stack
 	$(STACK) install --only-dependencies

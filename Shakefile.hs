@@ -9,18 +9,18 @@ main = do
     executeTasks $ do
         want ["build.lock", ("insc_jvm" <.> exe), ("insc_llvm" <.> exe)]
 
-        "test.lock" %> \out -> do
-            alwaysRerun
-            success <- executeStackBuild ["test", "--no-terminal", "--test-arguments=--jobs=1"] "."
-            _ <- liftIO $ if success then return () else ioError $ userError "Fail."
-            executeCommand "touch" [out] "."
-            return ()
+--        "test.lock" %> \out -> do
+--            alwaysRerun
+--            success <- executeStackBuild ["test", "--no-terminal", "--test-arguments=--jobs=1"] "."
+--            _ <- liftIO $ if success then return () else ioError $ userError "Fail."
+--            executeCommand "touch" [out] "."
+--            return ()
 
         "build.lock" %> \out -> do
             alwaysRerun
             success <- executeStackBuild ["build"] "."
             _ <- liftIO $ if success then return () else ioError $ userError "Fail."
-            need ["test.lock"]
+--            need ["test.lock"]
             executeCommand "touch" [out] "."
             return ()
 
