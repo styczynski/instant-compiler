@@ -8,12 +8,16 @@ import           Control.Monad.Reader
 import           Data.Map.Lazy
 import qualified Data.Map.Lazy as M
 import           Compiler.Compiler
+
+
 import           Inference.Inferencer
+import           Inference.TypingEnvironment as TE
 
 type Analyzer = Program -> Exec Bool
 
 analyze :: Analyzer
-analyze (Program statements) = do
+analyze ast@(Program statements) = do
+  _ <- return $ inferAST TE.empty TE.initInfer ast
   return True
 
 runAnalyzer :: Program -> Environment -> Analyzer -> IO Bool
