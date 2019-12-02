@@ -94,10 +94,10 @@ retrieveState (Right (_, state)) = state
 inferAST
   :: TypeEnvironment
   -> InferState
-  -> Implementation
+  -> Program
   -> IO (Either TypeError (Scheme, TypeEnvironment, InferState))
 inferAST env state ex = do
-  i      <- runInfer env state (inferImplementation ex)
+  i      <- runInfer env state (inferProgram ex)
   env    <- return $ retrieveEnv i
   state  <- return $ retrieveState i
   scheme <- solve $ unpackEnvTypeContraints i
@@ -106,9 +106,9 @@ inferAST env state ex = do
     Right s -> return $ Right (s, env, state)
 
 -- | Get type contraints for given implementation node in AST
-inferPogram
+inferProgram
   :: Program -> Infer (TypeEnvironment, Type, [TypeConstraint])
-inferImplementation ast@(IRoot cores) = do
+inferProgram ast = do
   return $ (empty, TypeUnit, [])
 
 -- | Creates abstract type constructor for given name and parameters
@@ -125,58 +125,6 @@ createTypeExpressionAbstractArgConstructor typeName names@(hNames : tNames) =
       names
   in  TypeExprIdent (TypeArgJust identHead identTail) typeName
 
--- | Infers type for variant option
-inferVariantOption
-  :: [String]
-  -> Ident
-  -> TDefVariant
-  -> Infer (TypeEnvironment, Type, [TypeConstraint])
-inferVariantOption typeVars typeName (TDefVarSimpl name@(Ident nameStr)) = do
-  retType <- return
-    $ createTypeExpressionAbstractArgConstructor typeName typeVars
-  reverseType <- return $ TypeFun retType retType
-  (r0, _, _)  <-
-    inferImplementationPhrase
-    $ IGlobalLet LetRecNo
-                 (PatIdent $ Ident $ nameStr ++ "_reverse")
-                 []
-                 TypeConstrEmpty
-    $ ECTyped reverseType
-  r <-
-    local (\_ -> r0)
-    $ inferImplementationPhrase
-    $ IGlobalLet LetRecNo (PatIdent name) [] TypeConstrEmpty
-    $ ECTyped retType
-  return r
-inferVariantOption typeVars typeName (TDefVarCompl name@(Ident nameStr) typeExpr)
-  = do
-    fvsNames <- freeDimensionsM typeExpr
-    payl     <- errPayload
-    _        <- if fvsNames `Set.isSubsetOf` (Set.fromList typeVars)
-      then return 0
-      else
-        throwError
-        $ Debug payl
-        $ "Invalid abstract variable used in type definition."
-    -- [(PatCheck (Ident "x") typeExpr)]
-    retType <- return
-      $ createTypeExpressionAbstractArgConstructor typeName typeVars
-    selType        <- return $ TypeFun (typeExpr) retType
-    selReverseType <- return $ TypeFun retType (typeExpr)
-    (r0, _, _)     <-
-      inferImplementationPhrase
-      $ IGlobalLet LetRecNo
-                   (PatIdent $ Ident $ nameStr ++ "_reverse")
-                   []
-                   TypeConstrEmpty
-      $ ECTyped selReverseType
-    r <-
-      local (\_ -> r0)
-      $ inferImplementationPhrase
-      $ IGlobalLet LetRecNo (PatIdent name) [] TypeConstrEmpty
-      $ ECTyped selType
-    return r
-
 -- | Transforms AST type param to list of parameters' names
 typeParamsToList :: TypeParam -> [String]
 typeParamsToList TypeParamNone = []
@@ -187,34 +135,6 @@ typeParamsToList (TypeParamJustOne (TypeIdentAbstract name)) = [name]
 ------------------------------------------------------------------
 --        Inference for various types of AST nodes              --
 ------------------------------------------------------------------
-
-inferTypeDef :: TypeDef -> Infer (TypeEnvironment, Type, [TypeConstraint])
-inferTypeDef ast@(TypeDefVar typeParams name options) = do
-  markTrace ast
-  env <- ask
-  r   <- foldlM
-    (\(envAcc, _, _) option -> do
-      i <- local (\_ -> envAcc)
-        $ inferVariantOption (typeParamsToList typeParams) name option
-      return i
-    )
-    (env, TypeUnit, [])
-    options
-  unmarkTrace ast
-  return r
-inferTypeDef ast@(TypeDefVarP typeParams name options) = do
-  markTrace ast
-  env <- ask
-  r   <- foldlM
-    (\(envAcc, _, _) option -> do
-      i <- local (\_ -> envAcc)
-        $ inferVariantOption (typeParamsToList typeParams) name option
-      return i
-    )
-    (env, TypeUnit, [])
-    options
-  unmarkTrace ast
-  return r
 
 inferE :: SimplifiedExpr -> Infer (TypeEnvironment, Type, [TypeConstraint])
 inferE expr = do

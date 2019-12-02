@@ -125,3 +125,34 @@ comment    "#" ;
 comment    "//" ;
 
 comment    "/*" "*/" ;
+
+
+-- type expressions ----
+
+token TypeIdentAbstract (["'"] ["abcdefghijklmnopqrstuvwxyz"]) ;
+
+TypeParamJust. TypeParam ::= "(" [TypeIdentAbstract] ")" ;
+TypeParamJustOne. TypeParam ::= TypeIdentAbstract ;
+TypeParamNone. TypeParam ::= "" ;
+separator nonempty TypeIdentAbstract "," ;
+
+TypeArgEl. TypeArgEl ::= TypeExpression ;
+separator nonempty TypeArgEl "," ;
+TypeArgJust. TypeArg ::= "(" TypeArgEl "," [TypeArgEl] ")" ;
+TypeArgJustOne. TypeArg ::= TypeSimpleExpression ;
+
+TypeSExprEmpty. TypeSimpleExpression ::= "unit" ;
+TypeSExprAbstract.    TypeSimpleExpression  ::= TypeIdentAbstract;
+TypeSExprIdent.       TypeSimpleExpression  ::= Ident ;
+TypeSExprList.        TypeSimpleExpression     ::= "[" TypeExpression "]" ;
+
+TypeExprSimple.  TypeExpression4      ::= TypeSimpleExpression ;
+TypeExprIdent.    TypeExpression3     ::= TypeArg Ident ;
+TypeExprTuple.       TypeExpression1     ::= TypeExpression2 "*" [TypeExpression2] ;
+separator nonempty TypeExpression2 "*" ;
+TypeFun.             TypeExpression      ::= TypeExpression1 "->" TypeExpression ;
+
+coercions            TypeExpression      5 ;
+
+TypeConstrDef.      TypeConstraint      ::= ":" TypeExpression ;
+TypeConstrEmpty.    TypeConstraint      ::= "" ;

@@ -144,18 +144,6 @@ freshTypeVarPlaceholdersLock n = do
     (replicate n 0)
   return r
 
--- | Translates AST node representing "rec" keyword into boolean
-isRec :: LetRecKeyword -> Bool
-isRec LetRecYes = True
-isRec LetRecNo  = False
-
--- | Injects type check statement into AST
-withTypeAnnot
-  :: Syntax.TypeConstraint -> ComplexExpression -> Infer ComplexExpression
-withTypeAnnot TypeConstrEmpty       e = return e
-withTypeAnnot (TypeConstrDef texpr) e = do
-  return $ ECChecked e texpr
-
 -- | Injects type containt statement into AST
 constraintAnnot :: TypeConstraint -> Infer TypeConstraint
 constraintAnnot (TypeConstraint _ constrnt) = do
@@ -172,12 +160,6 @@ constraintAnnoTypeList cs = do
     )
     []
     cs
-
--- | Get type scheme for constants
-geTypeStaticstScheme :: Constant -> Scheme
-geTypeStaticstScheme (CInt    _) = Scheme [] (TypeStatic "Int")
-geTypeStaticstScheme (CBool   _) = Scheme [] (TypeStatic "Bool")
-geTypeStaticstScheme (CString _) = Scheme [] (TypeStatic "String")
 
 class Normalizable a where
   normalize :: a -> a
