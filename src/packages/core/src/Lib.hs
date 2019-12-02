@@ -3,8 +3,6 @@ module Lib where
 import Compiler.Compiler
 import Syntax.Base
 
-import JVM.JVM
-
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
 

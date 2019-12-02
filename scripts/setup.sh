@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -x "$(command -v git)" ]; then
+  exit 0
+fi
+
 # Stack installation script, adapted from:
 # https://github.com/yantonov/install-ghc/blob/af0b968b9e8423efb152ccec4224821e29317710/ubuntu/install-ghc-ubuntu.md
 
