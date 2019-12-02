@@ -38,4 +38,6 @@ import qualified Data.Set                      as Set
 --        Simplification for various types of AST nodes         --
 ------------------------------------------------------------------
 
--- empty --
+simplifyProgram :: Program -> Infer SimplifiedExpr
+simplifyProgram _ = do
+  return $ SimplifiedConstInt 42

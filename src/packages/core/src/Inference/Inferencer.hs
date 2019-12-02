@@ -109,7 +109,10 @@ inferAST env state ex = do
 inferProgram
   :: Program -> Infer (TypeEnvironment, Type, [TypeConstraint])
 inferProgram ast = do
-  return $ (empty, TypeUnit, [])
+  simpl <- simplifyProgram ast
+  env <- ask
+  (simplT, simplC) <- infer simpl
+  return (env, simplT, simplC)
 
 -- | Creates abstract type constructor for given name and parameters
 createTypeExpressionAbstractArgConstructor
