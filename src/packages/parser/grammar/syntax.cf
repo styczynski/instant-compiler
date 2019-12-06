@@ -1,6 +1,6 @@
 -- programs ------------------------------------------------
 
-entrypoints Program ;
+entrypoints Program, TypeExpression ;
 
 Program.   Program ::= [TopDef] ;
 

@@ -3,6 +3,7 @@ module Lib where
 import Compiler.Compiler
 import Analyzer.Analyzer
 import Syntax.Base
+import Control.Exception
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
@@ -25,6 +26,7 @@ runCWith compiler v s env = let ts = myLexer s in case pProgram ts of
           Bad s    -> return $ FailedParse $ show s
           Ok  tree -> do
                         _ <- runAnalyzer tree env analyze
+                        _ <- return $ assert False 0
                         res <- runAST tree env compiler
                         return res
 

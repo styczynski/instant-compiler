@@ -13,14 +13,19 @@ import           Compiler.Compiler
 import           Inference.Inferencer
 import           Inference.TypingEnvironment as TE
 
-type Analyzer = Program -> Exec Bool
+type Analyzer = Program -> Exec String
 
 analyze :: Analyzer
 analyze ast@(Program statements) = do
-  _ <- return $ inferAST TE.empty TE.initInfer ast
-  return True
+  r <- liftIO $ inferAST TE.empty TE.initInfer ast
+  str <- return
+       (case r of
+         Left err -> (show err)
+         Right (scheme, _, _) -> (show scheme)
+       )
+  return str
 
-runAnalyzer :: Program -> Environment -> Analyzer -> IO Bool
+runAnalyzer :: Program -> Environment -> Analyzer -> IO String
 runAnalyzer tree env analyzer = do
  r <- runExceptT
    (runReaderT
@@ -33,7 +38,8 @@ runAnalyzer tree env analyzer = do
    )
  result <- return
      (case r of
-       Left err -> False
+       Left err -> (show err)
        Right (res, _) -> res
      )
+ putStrLn $ "inference: " ++ result
  return result

@@ -20,7 +20,6 @@ import           Inference.TypingEnvironment
 import           Inference.Types
 import           Inference.Substitutions
 import           Inference.Errors
-import           Inference.Simplifier
 import           Inference.ConstraintSolver
 import           Inference.InferencerUtils
 
@@ -170,3 +169,13 @@ resolveTypeExpression exp = do
   t    <- resolveTypeExpressionRec fvs exp
   fvsT <- return $ Map.elems fvs
   return $ Scheme fvsT t
+
+-- | Parse type string with environment
+parseTypeExpression
+  :: String
+  -> Infer Scheme
+parseTypeExpression typeExpr =
+  let ts = myLexer typeExpr
+  in
+    case pTypeExpression ts of
+      Ok tree -> resolveTypeExpression tree
