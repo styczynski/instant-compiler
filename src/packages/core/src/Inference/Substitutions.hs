@@ -106,8 +106,8 @@ instance WithFreedom TypeConstraint TypeVar where
 
 -- | This is used to replace type variables within types
 instance Substitutable TypeConstraint TypeVar Type where
-  (.>) s (TypeConstraint _ (t1, t2)) =
-    TypeConstraint EmptyPayload (s .> t1, s .> t2)
+  (.>) s (TypeConstraint p (t1, t2)) =
+    TypeConstraint p (s .> t1, s .> t2)
 
 instance (WithFreedom a b) => WithFreedom [a] b where
   freeDimensions s =

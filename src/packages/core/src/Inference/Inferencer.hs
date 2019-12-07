@@ -147,7 +147,9 @@ inferE expr = do
 
 -- | Create constraint for two types (these two types will be unified by solver)
 (<.>) :: Type -> Type -> Infer TypeConstraint
-(<.>) type1 type2 = return $ TypeConstraint EmptyPayload (type1, type2)
+(<.>) type1 type2 = do
+  p <- errPayload
+  return $ TypeConstraint p (type1, type2)
 
 infer :: SimplifiedExpr -> Infer (Type, [TypeConstraint])
 infer SimplifiedSkip            = return ((TypeStatic "Int"), [])

@@ -17,3 +17,6 @@ vendor/
 **/Main.jar
 **/*.tix
 **/test/Generated/
+
+# Hand testing files
+in.*

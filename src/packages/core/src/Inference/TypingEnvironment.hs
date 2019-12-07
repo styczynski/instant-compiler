@@ -35,12 +35,16 @@ type TypeSubstitution = Substitution TypeVar Type
 emptySubst :: TypeSubstitution
 emptySubst = Subst $ Map.empty
 
+-- | Traceable
+class Traceable t where
+  toString :: t -> String
+
 -- | Payload for typechecking errors
-data TypeErrorPayload = EmptyPayload | TypeErrorPayload String deriving (Show)
+data (Traceable t) => TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show)
 
 -- | Type constraints with error payload annotation and unifier for types
-data TypeConstraint = TypeConstraint TypeErrorPayload (Type, Type) deriving (Show)
-data TypeUnifier = NoUnifier | TypeUnifier [TypeConstraint] TypeSubstitution
+data (Traceable t) => TypeConstraint t = TypeConstraint (TypeErrorPayload t) (Type, Type) deriving (Show)
+data (Traceable t) => TypeUnifier t = NoUnifier | TypeUnifier [TypeConstraint t] TypeSubstitution
 
 -- | Base inference monad and state
 type Infer

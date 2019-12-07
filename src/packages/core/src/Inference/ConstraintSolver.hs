@@ -35,28 +35,28 @@ type Solve = StateT SolverState (ExceptT TypeError IO)
 
 -- | Solver state
 data SolverState = SolverState {
-  lastAnnot :: TypeErrorPayload
+  lastAnnot :: TypeErrorPayload,
+  annotTrace :: [TypeErrorPayload]
 }
 
 -- | Empty solver state
 emptySolverState :: SolverState
-emptySolverState = SolverState { lastAnnot = EmptyPayload }
+emptySolverState = SolverState { lastAnnot = EmptyPayload, annotTrace = [] }
 
 -- | Gets type cntraint and records its annotation inside solver state
 --   This is for purely debug purposes
 checkpointAnnotSolve :: TypeConstraint -> Solve ()
 checkpointAnnotSolve (TypeConstraint l _) = do
   s <- get
-  put s { lastAnnot = l }
+  put s { lastAnnot = l, annotTrace = (annotTrace s) ++ [l] }
   return ()
 
 -- | Generate error payload from current solver state (for debug purposes)
 errSolvePayload :: Solve TypeErrorPayload
 errSolvePayload = do
   s         <- get
-  lastAnnot <-
-    return $ let SolverState { lastAnnot = lastAnnot } = s in lastAnnot
-  return lastAnnot
+  lastAnnot <- return $ annotTrace s
+  return $ TypeErrorPayload $ show lastAnnot
 
 -- | Runs solve monad for given contraints
 runSolve :: [TypeConstraint] -> IO (Either TypeError TypeSubstitution)

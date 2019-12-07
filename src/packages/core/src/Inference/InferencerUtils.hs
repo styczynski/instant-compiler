@@ -73,7 +73,7 @@ errPayload = do
   lastTraceStr <-
     return
       $ let InferState { lastInferExpr = lastInferExpr } = s in lastInferExpr
-  return $ TypeErrorPayload lastTraceStr
+  return $ TypeErrorPayload $ show lastTraceStr
 
 -- | Performs env ?? name operation but throws error if it fails
 lookupEnv :: Ident -> Infer Type
