@@ -9,15 +9,15 @@ import           Data.Map.Lazy
 import qualified Data.Map.Lazy as M
 import           Compiler.Compiler
 
-
+import           Inference.Syntax
 import           Inference.Inferencer
 import           Inference.TypingEnvironment as TE
 
-type Analyzer = Program -> Exec String
+type Analyzer t = t -> Exec String
 
-analyze :: Analyzer
-analyze ast@(Program statements) = do
-  r <- liftIO $ inferAST ("") TE.empty TE.initInfer ast
+analyze :: (Traceable t) => Analyzer t
+analyze ast = do
+  r <- liftIO $ inferAST TE.empty TE.initInfer ast
   str <- return
        (case r of
          Left err -> (show err)
@@ -25,7 +25,7 @@ analyze ast@(Program statements) = do
        )
   return str
 
-runAnalyzer :: Program -> Environment -> Analyzer -> IO String
+runAnalyzer :: (Traceable t) => t -> Environment -> Analyzer t -> IO String
 runAnalyzer tree env analyzer = do
  r <- runExceptT
    (runReaderT

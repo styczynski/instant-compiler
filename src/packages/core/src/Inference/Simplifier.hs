@@ -40,6 +40,10 @@ import qualified Data.Set                      as Set
 --        Simplification for various types of AST nodes         --
 ------------------------------------------------------------------
 
+instance Traceable Program where
+  toString p = show p
+  simplify p = simplifyProgram p
+
 getPreface :: (Traceable t) => (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
 getPreface p = do
   declareTypes [

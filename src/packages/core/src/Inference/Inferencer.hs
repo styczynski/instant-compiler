@@ -92,12 +92,11 @@ retrieveState (Right (_, state)) = state
 
 -- | Takes AST and run inferencer and solver returning inferenced type
 inferAST
-  :: (Traceable t) => t
-  -> TypeEnvironment
+  :: (Traceable t) => TypeEnvironment
   -> InferState t
-  -> Program
+  -> t
   -> IO (Either (TypeError t) (Scheme, TypeEnvironment, InferState t))
-inferAST _ env state ex = do
+inferAST env state ex = do
   i      <- runInfer env state (inferProgram ex)
   env    <- return $ retrieveEnv i
   state  <- return $ retrieveState i
@@ -108,9 +107,9 @@ inferAST _ env state ex = do
 
 -- | Get type contraints for given implementation node in AST
 inferProgram
-  :: (Traceable t) => Program -> Infer t (TypeEnvironment, Type, [TypeConstraint t])
+  :: (Traceable t) => t -> Infer t (TypeEnvironment, Type, [TypeConstraint t])
 inferProgram ast = do
-  simpl <- simplifyProgram ast
+  simpl <- simplify ast
   env <- ask
   (simplT, simplC) <- infer simpl
   return (env, simplT, simplC)
