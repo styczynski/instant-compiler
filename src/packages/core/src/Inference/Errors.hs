@@ -31,14 +31,15 @@ typesListToStr l =
     ++ "}"
 
 -- | Creates readeable human message from the error payload
-generateTypePayloadMessage :: TypeErrorPayload -> String
+generateTypePayloadMessage :: (Traceable t) => (TypeErrorPayload t) -> String
 generateTypePayloadMessage EmptyPayload =
   "Typechecking error:\nLocation: <unknown>\n\n"
 generateTypePayloadMessage (TypeErrorPayload ast) =
-  "Typechecking error:\nLocation: " ++ ast ++ "\n\n"
+  --"Typechecking error:\nLocation: " ++ ast ++ "\n\n"
+  "Typechecking error:\nLocation: " ++ "..." ++ "\n\n"
 
 -- | Translates typing error into readable string
-typeErrorToStr :: TypeError -> String
+typeErrorToStr :: (Traceable t) => TypeError t -> String
 typeErrorToStr (UnificationFail payl a b) =
   (generateTypePayloadMessage payl)
     ++ "Cannot match types, expected: "
@@ -65,6 +66,7 @@ typeErrorToStr (InfiniteType payl (TV v) t) =
     ++ "': "
     ++ (typeToStr [] t)
 typeErrorToStr e =
-  (generateTypePayloadMessage EmptyPayload)
+  -- (generateTypePayloadMessage EmptyPayload)
+  "Typechecking error:\nLocation: <unknown>\n\n"
     ++ "Got unexpected error during type inference phase.\n"
-    ++ (show e)
+  --  ++ (show e)

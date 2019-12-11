@@ -22,28 +22,28 @@ import           Inference.Types
 import           Inference.TypingEnvironment
 
 -- | Simplified AST representation
-data SimplifiedExpr
+data (Traceable t) => SimplifiedExpr t
   = SimplifiedVariable Ident
-  | SimplifiedCall SimplifiedExpr SimplifiedExpr
-  | SimplifiedFunction Ident SimplifiedExpr
-  | SimplifiedLet Ident SimplifiedExpr SimplifiedExpr
-  | SimplifiedLetAs Ident SimplifiedExpr SimplifiedExpr SimplifiedExpr
-  | SimplifiedIf SimplifiedExpr SimplifiedExpr SimplifiedExpr
-  | SimplifiedFixPoint SimplifiedExpr
-  | SimplifiedBinaryOp BinaryOp SimplifiedExpr SimplifiedExpr
-  | SimplifiedUnaryOp UnaryOp SimplifiedExpr
+  | SimplifiedCall (SimplifiedExpr t) (SimplifiedExpr t)
+  | SimplifiedFunction Ident (SimplifiedExpr t)
+  | SimplifiedLet Ident (SimplifiedExpr t) (SimplifiedExpr t)
+  | SimplifiedLetAs Ident (SimplifiedExpr t) (SimplifiedExpr t) (SimplifiedExpr t)
+  | SimplifiedIf (SimplifiedExpr t) (SimplifiedExpr t) (SimplifiedExpr t)
+  | SimplifiedFixPoint (SimplifiedExpr t)
+  | SimplifiedBinaryOp BinaryOp (SimplifiedExpr t) (SimplifiedExpr t)
+  | SimplifiedUnaryOp UnaryOp (SimplifiedExpr t)
   | SimplifiedSkip
-  | SimplifiedCheck SimplifiedExpr Scheme
+  | SimplifiedCheck (SimplifiedExpr t) Scheme
   | SimplifiedExportEnv
   | SimplifiedTyped Scheme
-  | SimplifiedAnnotated String SimplifiedExpr
+  | SimplifiedAnnotated t (SimplifiedExpr t)
   | SimplifiedConstBool Bool
   | SimplifiedConstInt Integer
   | SimplifiedConstString String
-  | SimplifiedTag Ident SimplifiedExpr
-  | SimplifiedTagUnpack Ident SimplifiedExpr
-  | SimplifiedTagUnpackNonStrict Ident SimplifiedExpr
-  | SimplifiedAlternatives [SimplifiedExpr]
+  | SimplifiedTag Ident (SimplifiedExpr t)
+  | SimplifiedTagUnpack Ident (SimplifiedExpr t)
+  | SimplifiedTagUnpackNonStrict Ident (SimplifiedExpr t)
+  | SimplifiedAlternatives [(SimplifiedExpr t)]
   deriving (Show, Eq)
 
 -- | Binary operation

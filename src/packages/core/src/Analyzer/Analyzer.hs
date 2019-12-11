@@ -17,7 +17,7 @@ type Analyzer = Program -> Exec String
 
 analyze :: Analyzer
 analyze ast@(Program statements) = do
-  r <- liftIO $ inferAST TE.empty TE.initInfer ast
+  r <- liftIO $ inferAST ("") TE.empty TE.initInfer ast
   str <- return
        (case r of
          Left err -> (show err)

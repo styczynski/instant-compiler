@@ -37,10 +37,10 @@ import qualified Data.Map                      as Map
 import qualified Data.Set                      as Set
 
 -- | Injects current AST annotation into the simplified AST node
-addExprAnnot :: Infer SimplifiedExpr -> Infer SimplifiedExpr
+addExprAnnot :: (Traceable t) => Infer t (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
 addExprAnnot inExpr = do
   s             <- get
-  inferTraceTop <-
+  (TypeErrorPayload inferTraceTop) <-
     return
       $ let InferState { inferTrace = inferTrace } = s
         in  let (h : _) = inferTrace in h
@@ -48,16 +48,17 @@ addExprAnnot inExpr = do
   return $ SimplifiedAnnotated inferTraceTop e
 
 -- | Adds new inference trace node (for debugging purposes)
-markTrace :: (Show a, Print a) => a -> Infer ()
+markTrace :: (Traceable t, Show a, Print a) => a -> Infer t ()
 markTrace a = do
   s          <- get
   inferTrace <-
     return $ let InferState { inferTrace = inferTrace } = s in inferTrace
-  put s { inferTrace = ([(printTree a)] ++ inferTrace) }
+    --TODO: Fix this crap
+  put s { inferTrace = ([] ++ inferTrace) }
   return ()
 
 -- | Removes inference trace node (for debugging purposes)
-unmarkTrace :: (Show a, Print a) => a -> Infer ()
+unmarkTrace :: (Traceable t, Show a, Print a) => a -> Infer t ()
 unmarkTrace a = do
   s        <- get
   newTrace <-
@@ -67,16 +68,14 @@ unmarkTrace a = do
   return ()
 
 -- | Generates error payload for current inference trace (for debugging purposes)
-errPayload :: Infer TypeErrorPayload
+errPayload :: (Traceable t) => Infer t (TypeErrorPayload t)
 errPayload = do
   s            <- get
-  lastTraceStr <-
-    return
-      $ let InferState { lastInferExpr = lastInferExpr } = s in lastInferExpr
-  return $ TypeErrorPayload $ show lastTraceStr
+  lastTraceStr <- return $ lastInferExpr s
+  return $ lastTraceStr
 
 -- | Performs env ?? name operation but throws error if it fails
-lookupEnv :: Ident -> Infer Type
+lookupEnv :: (Traceable t) => Ident -> Infer t Type
 lookupEnv name = do
   env <- ask
   case (env ?? name) of
@@ -92,26 +91,26 @@ letters :: [String]
 letters = [1 ..] >>= flip replicateM ['a' .. 'z']
 
 -- | Generate unique indentificator for variable
-freshIdent :: Infer Ident
+freshIdent :: (Traceable t) => Infer t Ident
 freshIdent = do
   s <- get
   put s { count = count s + 1 }
   return $ Ident $ "__@$internal_variable__" ++ (letters !! count s) ++ "_"
 
 -- | Generate unique identificator for type variable
-freshTypeVar :: Infer Type
+freshTypeVar :: (Traceable t) => Infer t Type
 freshTypeVar = do
   s <- get
   put s { count = count s + 1 }
   return $ TypeVar $ TV (letters !! count s)
 
-freshCountInt :: Infer Int
+freshCountInt :: (Traceable t) => Infer t Int
 freshCountInt = do
   s <- get
   put s { tCount = tCount s + 1 }
   return $ tCount s
 
-getTagIndex :: String -> Infer Int
+getTagIndex :: (Traceable t) => String -> Infer t Int
 getTagIndex tagName = do
   s <- get
   case Map.lookup tagName (tagMap s) of
@@ -122,7 +121,7 @@ getTagIndex tagName = do
       put s { tagMap = Map.insert tagName c (tagMap s) }
       return c
 
-freshTypeVarPlaceholders :: Int -> Infer [Type]
+freshTypeVarPlaceholders :: (Traceable t) => Int -> Infer t [Type]
 freshTypeVarPlaceholders n = do
   r <- foldrM
     (\_ acc -> do
@@ -133,7 +132,7 @@ freshTypeVarPlaceholders n = do
     (replicate n 0)
   return r
 
-freshTypeVarPlaceholdersLock :: Int -> Infer [Type]
+freshTypeVarPlaceholdersLock :: (Traceable t) => Int -> Infer t [Type]
 freshTypeVarPlaceholdersLock n = do
   r <- foldrM
     (\_ acc -> do
@@ -145,13 +144,13 @@ freshTypeVarPlaceholdersLock n = do
   return r
 
 -- | Injects type containt statement into AST
-constraintAnnot :: TypeConstraint -> Infer TypeConstraint
+constraintAnnot :: (Traceable t) => TypeConstraint t -> Infer t (TypeConstraint t)
 constraintAnnot (TypeConstraint _ constrnt) = do
   payl <- errPayload
   return $ TypeConstraint payl constrnt
 
 -- | Injects type constraint statement into AST for each node in the list
-constraintAnnoTypeList :: [TypeConstraint] -> Infer [TypeConstraint]
+constraintAnnoTypeList :: (Traceable t) => [TypeConstraint t] -> Infer t [TypeConstraint t]
 constraintAnnoTypeList cs = do
   foldrM
     (\c acc -> do
