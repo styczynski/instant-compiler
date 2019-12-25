@@ -31,21 +31,21 @@ import           Data.Foldable           hiding ( toList )
 import qualified Data.Map                      as Map
 
 -- | Empty inference state
-initInfer :: (Traceable t) => InferState t
-initInfer = InferState { count         = 0
-                       , tCount        = 0
-                       , tagMap        = Map.empty
-                       , inferTrace    = []
-                       , lastInferExpr = EmptyPayload
-                       }
+--initInfer :: (AST r t) => InferState r t
+--initInfer = InferState { count         = 0
+--                       , tCount        = 0
+--                       , tagMap        = Map.empty
+--                       , inferTrace    = []
+--                       , lastInferExpr = EmptyPayload
+--                       }
 
 -- | Stringify type contraint (for debug purposes)
-constraintToStr :: (Traceable t) => TypeConstraint t -> String
+constraintToStr :: (AST r t) => TypeConstraint r t -> String
 constraintToStr (TypeConstraint _ (a, b)) =
   (typeToStr [] a) ++ " ~ " ++ (typeToStr [] b)
 
 -- | Stringify type contraints list (for debug purposes)
-constraintsListToStr :: (Traceable t) => [TypeConstraint t] -> String
+constraintsListToStr :: (AST r t) => [TypeConstraint r t] -> String
 constraintsListToStr l =
   "{"
     ++ (foldr
@@ -73,7 +73,7 @@ empty = TypeEnvironment Map.empty
 (-->) (TypeEnvironment env) name = TypeEnvironment (Map.delete name env)
 
 -- | Execute monad in shadowed environment
-(==>) :: (Ident, Scheme) -> Infer t a -> Infer t a
+(==>) :: (Ident, Scheme) -> Infer r t a -> Infer r t a
 (==>) (x, sc) m = local (\env -> (env --> x) ++> (x, sc)) m
 
 -- | Lookup typing environment for the identificator

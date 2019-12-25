@@ -8,20 +8,26 @@ import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
 import System.FilePath
 
+import Inference.Syntax
+
 import Lib
 import Compiler.Compiler
 import LLVM.LLVM
+import Syntax.Base
 
-runFile :: Compiler -> Verbosity -> FilePath -> IO ()
-runFile compiler v f = putStrLn f >> readFile f >>= runBlock compiler v
+compilerInit :: (Program, String)
+compilerInit = (Program [], "")
+
+runFile :: Compiler Program String -> Verbosity -> FilePath -> IO ()
+runFile compiler v f = putStrLn f >> readFile f >>= runBlockI compiler v
 
 callCompiler :: LLVMCompilerConfiguration -> Verbosity -> String -> IO String
 callCompiler opt v = runBlockC (compilerLLVM opt) v
 
-runBlockC :: Compiler -> Verbosity -> String -> IO String
+runBlockC :: Compiler Program String -> Verbosity -> String -> IO String
 runBlockC compiler v s = do
-  initEnv0 <- runInitEmpty
-  result <- runWith compiler v s initEnv0
+  initEnv0 <- runInitEmpty compilerInit
+  result <- runWith compilerInit compiler v s initEnv0
   case result of
      FailedCompilation s -> do
                     hPutStrLn stderr s
@@ -31,10 +37,10 @@ runBlockC compiler v s = do
                     exitFailure
      Compiled out env -> return out
 
-runBlockI :: Compiler -> Verbosity -> String -> IO ()
+runBlockI :: Compiler Program String -> Verbosity -> String -> IO ()
 runBlockI compiler v s = do
-  initEnv0 <- runInitEmpty
-  result <- runWith compiler v s initEnv0
+  initEnv0 <- runInitEmpty compilerInit
+  result <- runWith compilerInit compiler v s initEnv0
   case result of
      FailedCompilation s -> do
                     hPutStrLn stderr s
@@ -45,9 +51,7 @@ runBlockI compiler v s = do
      Compiled out env -> do
                     putStrLn out
 
-runBlock = runBlockI
-
-execContents compiler v = getContents >>= runBlock compiler v
+execContents compiler v = getContents >>= runBlockI compiler v
 
 data MainArgs = MainArgs
   { file :: String

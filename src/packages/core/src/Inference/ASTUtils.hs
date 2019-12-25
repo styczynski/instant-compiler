@@ -13,27 +13,27 @@ import           Inference.Syntax
 import           Inference.TypingEnvironment
 import           Inference.TypeExpressionResolver
 
-checkType :: (Traceable t) => String -> (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+checkType :: (AST r t) => String -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 checkType typeExpression expr = do
   declType <- parseTypeExpression typeExpression
   return $ SimplifiedCheck expr declType
 
-declareTypes :: (Traceable t) => [(String, String)] -> (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+declareTypes :: (AST r t) => [(String, String)] -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 declareTypes decls e = do
   foldrM (\(nameStr, typeStr) acc -> do
       declType <- parseTypeExpression typeStr
       return $ SimplifiedLet (Ident nameStr) (SimplifiedTyped declType) acc) e decls
 
-valueOfType :: (Traceable t) => String -> Infer t (SimplifiedExpr t)
+valueOfType :: (AST r t) => String -> Infer r t (SimplifiedExpr r t)
 valueOfType typeExpression = do
   declType <- parseTypeExpression typeExpression
   return $ SimplifiedTyped declType
 
-createCall :: (Traceable t) => (SimplifiedExpr t) -> [(SimplifiedExpr t)] -> Infer t (SimplifiedExpr t)
+createCall :: (AST r t) => (SimplifiedExpr r t) -> [(SimplifiedExpr r t)] -> Infer r t (SimplifiedExpr r t)
 createCall fn args = do
   foldM (\acc arg -> return $ SimplifiedCall acc arg) fn args
 
-createNameCall :: (Traceable t) => String -> [(SimplifiedExpr t)] -> Infer t (SimplifiedExpr t)
+createNameCall :: (AST r t) => String -> [(SimplifiedExpr r t)] -> Infer r t (SimplifiedExpr r t)
 createNameCall name args = createCall (SimplifiedVariable $ Ident name) args
 
 getLambdaArgs :: [(String, String)] -> [String]
@@ -44,13 +44,13 @@ getLambdaArgsNames :: [(String, String)] -> [String]
 getLambdaArgsNames [] = ["__nothing__"]
 getLambdaArgsNames args = map snd args
 
-createLambda :: (Traceable t) => [(String, String)] -> String -> (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+createLambda :: (AST r t) => [(String, String)] -> String -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 createLambda args retType body = do
   lambda <- createUntypedLambda (getLambdaArgsNames args) body
   sig <- return $ intercalate " -> " $ getLambdaArgs args ++ [retType]
   checkType sig lambda
 
-createUntypedLambda :: (Traceable t) => [String] -> (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+createUntypedLambda :: (AST r t) => [String] -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 createUntypedLambda argNames body = do
   idents <- return $ map (\name -> Ident name) argNames
   foldrM (\ident acc -> do

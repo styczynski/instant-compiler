@@ -39,13 +39,13 @@ import qualified Data.Set                      as Set
 
 -- | Runs inference monad
 runInfer
-  :: (Traceable t) => TypeEnvironment
-  -> InferState t
-  -> Infer t (TypeEnvironment, Type, [TypeConstraint t])
+  :: (AST r t) => TypeEnvironment
+  -> InferState r t
+  -> Infer r t (TypeEnvironment, Type, [TypeConstraint r t])
   -> IO
        ( Either
-           (TypeError t)
-           ((TypeEnvironment, Type, [TypeConstraint t]), InferState t)
+           (TypeError r t)
+           ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t)
        )
 runInfer env state fn = do
   v <- runExceptT (runReaderT (runStateT fn (state)) (env))
@@ -55,7 +55,7 @@ runInfer env state fn = do
 
 -- | Runs solver monad
 solve
-  :: (Traceable t) => Either (TypeError t) (Type, [TypeConstraint t]) -> IO (Either (TypeError t) Scheme)
+  :: (AST r t) => Either (TypeError r t) (Type, [TypeConstraint r t]) -> IO (Either (TypeError r t) Scheme)
 solve r = case r of
   Left  err      -> return $ Left err
   Right (ty, cs) -> do
@@ -71,31 +71,31 @@ solve r = case r of
 
 -- | Helper to remove state and env from inference monad output
 unpackEnvTypeContraints
-  :: (Traceable t) => Either (TypeError t) ((TypeEnvironment, Type, [TypeConstraint t]), InferState t)
-  -> Either (TypeError t) (Type, [TypeConstraint t])
+  :: (AST r t) => Either (TypeError r t) ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t)
+  -> Either (TypeError r t) (Type, [TypeConstraint r t])
 unpackEnvTypeContraints (Left  r             ) = Left r
 unpackEnvTypeContraints (Right ((_, t, c), _)) = Right (t, c)
 
 -- | Helper to extract environment from inference monad output
 retrieveEnv
-  :: (Traceable t) => Either (TypeError t) ((TypeEnvironment, Type, [TypeConstraint t]), InferState t)
+  :: (AST r t) => Either (TypeError r t) ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t)
   -> TypeEnvironment
 retrieveEnv (Left  r             ) = empty
 retrieveEnv (Right ((e, _, _), _)) = e
 
 -- | Helper to extract inferencer state from inference monad output
 retrieveState
-  :: (Traceable t) => Either (TypeError t) ((TypeEnvironment, Type, [TypeConstraint t]), InferState t)
-  -> InferState t
-retrieveState (Left  r         ) = initInfer
+  :: (AST r t) => Either (TypeError r t) ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t)
+  -> InferState r t
+--retrieveState (Left  r         ) = initInfer
 retrieveState (Right (_, state)) = state
 
 -- | Takes AST and run inferencer and solver returning inferenced type
 inferAST
-  :: (Traceable t) => TypeEnvironment
-  -> InferState t
-  -> t
-  -> IO (Either (TypeError t) (Scheme, TypeEnvironment, InferState t))
+  :: (AST r t) => TypeEnvironment
+  -> InferState r t
+  -> r
+  -> IO (Either (TypeError r t) (Scheme, TypeEnvironment, InferState r t))
 inferAST env state ex = do
   i      <- runInfer env state (inferProgram ex)
   env    <- return $ retrieveEnv i
@@ -107,7 +107,7 @@ inferAST env state ex = do
 
 -- | Get type contraints for given implementation node in AST
 inferProgram
-  :: (Traceable t) => t -> Infer t (TypeEnvironment, Type, [TypeConstraint t])
+  :: (AST r t) => r -> Infer r t (TypeEnvironment, Type, [TypeConstraint r t])
 inferProgram ast = do
   simpl <- simplify ast
   env <- ask
@@ -139,19 +139,19 @@ typeParamsToList (TypeParamJustOne (TypeIdentAbstract name)) = [name]
 --        Inference for various types of AST nodes              --
 ------------------------------------------------------------------
 
-inferE :: (Traceable t) => SimplifiedExpr t -> Infer t (TypeEnvironment, Type, [TypeConstraint t])
+inferE :: (AST r t) => SimplifiedExpr r t -> Infer r t (TypeEnvironment, Type, [TypeConstraint r t])
 inferE expr = do
   env    <- ask
   (t, c) <- infer expr
   return $ (env, t, c)
 
 -- | Create constraint for two types (these two types will be unified by solver)
-(<.>) :: (Traceable t) => Type -> Type -> Infer t (TypeConstraint t)
+(<.>) :: (AST r t) => Type -> Type -> Infer r t (TypeConstraint r t)
 (<.>) type1 type2 = do
   p <- errPayload
   return $ TypeConstraint p (type1, type2)
 
-infer :: (Traceable t) => SimplifiedExpr t -> Infer t (Type, [TypeConstraint t])
+infer :: (AST r t) => SimplifiedExpr r t -> Infer r t (Type, [TypeConstraint r t])
 infer SimplifiedSkip            = return ((TypeStatic "Int"), [])
 infer (SimplifiedConstInt    _) = return ((TypeStatic "Int"), [])
 infer (SimplifiedConstBool   _) = return ((TypeStatic "Bool"), [])
@@ -311,7 +311,7 @@ infer (SimplifiedTag (Ident name) exp) = do
   ac   <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
 
-inferBinaryOperation :: (Traceable t) => BinaryOp -> Infer t Type
+inferBinaryOperation :: (AST r t) => BinaryOp -> Infer r t Type
 inferBinaryOperation OpSemicolon = do
   typeVar1 <- freshTypeVar
   typeVar2 <- freshTypeVar
@@ -332,7 +332,7 @@ inferBinaryOperation OpTupleCons = do
                 `TypeArrow` (TypeTuple typeVar (TypeTuple typeVar2 typeVar3))
                 )
 
-inferUnaryOperation :: (Traceable t) => UnaryOp -> Infer t Type
+inferUnaryOperation :: (AST r t) => UnaryOp -> Infer r t Type
 inferUnaryOperation OpHead = do
   typeVar <- freshTypeVar
   return $ (TypeList typeVar) `TypeArrow` (typeVar)

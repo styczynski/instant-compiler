@@ -9,6 +9,7 @@ Portability : POSIX
 
   This file contains utilites for handling typechecking errors.
 -}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Inference.Errors where
 
 import           Syntax.Base             hiding ( TV )
@@ -31,7 +32,7 @@ typesListToStr l =
     ++ "}"
 
 -- | Creates readeable human message from the error payload
-generateTypePayloadMessage :: (Traceable t) => (TypeErrorPayload t) -> String
+generateTypePayloadMessage :: (TypeErrorPayload t) -> String
 generateTypePayloadMessage EmptyPayload =
   "Typechecking error:\nLocation: <unknown>\n\n"
 generateTypePayloadMessage (TypeErrorPayload ast) =
@@ -39,7 +40,7 @@ generateTypePayloadMessage (TypeErrorPayload ast) =
   "Typechecking error:\nLocation: " ++ "..." ++ "\n\n"
 
 -- | Translates typing error into readable string
-typeErrorToStr :: (Traceable t) => TypeError t -> String
+typeErrorToStr :: (AST r t) => TypeError r t -> String
 typeErrorToStr (UnificationFail payl a b) =
   (generateTypePayloadMessage payl)
     ++ "Cannot match types, expected: "

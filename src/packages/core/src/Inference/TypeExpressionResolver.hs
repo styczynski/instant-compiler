@@ -40,7 +40,7 @@ import qualified Data.Set                      as Set
 -- | Extracts free variables from type expression and assigns them to fresh
 --   type variables.
 getTypeSimpleExpressionFV
-  :: (Traceable t) => TypeSimpleExpression -> Infer t (Map.Map String TypeVar)
+  :: (AST r t) => TypeSimpleExpression -> Infer r t (Map.Map String TypeVar)
 getTypeSimpleExpressionFV (TypeSExprList listType) =
   getTypeExpressionFV listType
 getTypeSimpleExpressionFV (TypeSExprIdent _) = return Map.empty
@@ -49,7 +49,7 @@ getTypeSimpleExpressionFV (TypeSExprAbstract (TypeIdentAbstract name)) = do
   tvv <- freshTypeVar
   return $ let (TypeVar tv) = tvv in Map.singleton name tv
 
-getTypeExpressionFV :: (Traceable t) => TypeExpression -> Infer t (Map.Map String TypeVar)
+getTypeExpressionFV :: (AST r t) => TypeExpression -> Infer r t (Map.Map String TypeVar)
 getTypeExpressionFV (TypeExprSimple simpl) = getTypeSimpleExpressionFV simpl
 getTypeExpressionFV (TypeExprIdent (TypeArgJustOne param) _) =
   getTypeSimpleExpressionFV param
@@ -75,14 +75,14 @@ getTypeExpressionFV (TypeExprTuple fstEl restEls) = foldlM
 getTypeExpressionFV _ = return Map.empty
 
 -- | Extracts free variables from type expression
-instance (Traceable t) => WithFreedomM TypeSimpleExpression String (Infer t) where
+instance (AST r t) => WithFreedomM TypeSimpleExpression String (Infer r t) where
   freeDimensionsM TypeSExprEmpty       = return $ Set.empty
   freeDimensionsM (TypeSExprList expr) = freeDimensionsM expr
   freeDimensionsM (TypeSExprAbstract (TypeIdentAbstract name)) =
     return $ Set.singleton name
   freeDimensionsM (TypeSExprIdent _) = return $ Set.empty
 
-instance (Traceable t) => WithFreedomM TypeExpression String (Infer t) where
+instance (AST r t) => WithFreedomM TypeExpression String (Infer r t) where
   freeDimensionsM (TypeExprSimple simpl) = freeDimensionsM simpl
   freeDimensionsM (TypeExprIdent (TypeArgJustOne simpl) _) =
     freeDimensionsM simpl
@@ -109,7 +109,7 @@ instance (Traceable t) => WithFreedomM TypeExpression String (Infer t) where
       restElems
 
 resolveTypeSimpleExpressionRec
-  :: (Traceable t) => (Map.Map String TypeVar) -> TypeSimpleExpression -> Infer t Type
+  :: (AST r t) => (Map.Map String TypeVar) -> TypeSimpleExpression -> Infer r t Type
 resolveTypeSimpleExpressionRec fvs TypeSExprEmpty = return TypeUnit
 resolveTypeSimpleExpressionRec fvs (TypeSExprIdent (Ident name)) =
   return $ TypeStatic name
@@ -131,7 +131,7 @@ resolveTypeSimpleExpressionRec fvs (TypeSExprAbstract (TypeIdentAbstract name))
       else let (Just tv) = Map.lookup name fvs in return $ TypeVar tv
 
 resolveTypeExpressionRec
-  :: (Traceable t) => (Map.Map String TypeVar) -> TypeExpression -> Infer t Type
+  :: (AST r t) => (Map.Map String TypeVar) -> TypeExpression -> Infer r t Type
 resolveTypeExpressionRec fvs (TypeExprSimple simpl) =
   resolveTypeSimpleExpressionRec fvs simpl
 resolveTypeExpressionRec fvs (TypeExprIdent (TypeArgJust firstParam restParams) (Ident name))
@@ -163,7 +163,7 @@ resolveTypeExpressionRec fvs (TypeExprTuple fstEl restEls) = do
   return tupleT
 
 -- | Entrypoint to resolve type expression
-resolveTypeExpression :: (Traceable t) => TypeExpression -> Infer t Scheme
+resolveTypeExpression :: (AST r t) => TypeExpression -> Infer r t Scheme
 resolveTypeExpression exp = do
   fvs  <- getTypeExpressionFV exp
   t    <- resolveTypeExpressionRec fvs exp
@@ -172,8 +172,8 @@ resolveTypeExpression exp = do
 
 -- | Parse type string with environment
 parseTypeExpression
-  :: (Traceable t) =>  String
-  -> Infer t  Scheme
+  :: (AST r t) =>  String
+  -> Infer r t  Scheme
 parseTypeExpression typeExpr =
   let ts = myLexer typeExpr
   in

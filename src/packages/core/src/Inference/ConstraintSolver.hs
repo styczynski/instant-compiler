@@ -31,35 +31,35 @@ import qualified Data.Map                      as Map
 import qualified Data.Set                      as Set
 
 -- | Monad presenting solver computation
-type Solve t = StateT (SolverState t) (ExceptT (TypeError t) IO)
+type Solve r t = StateT (SolverState r t) (ExceptT (TypeError r t) IO)
 
 -- | Solver state
-data (Traceable t) => SolverState t = SolverState {
+data (AST r t) => SolverState r t = SolverState {
   lastAnnot :: TypeErrorPayload t,
   annotTrace :: [TypeErrorPayload t]
 }
 
 -- | Empty solver state
-emptySolverState :: (Traceable t) => SolverState t
+emptySolverState :: (AST r t) => SolverState r t
 emptySolverState = SolverState { lastAnnot = EmptyPayload, annotTrace = [] }
 
 -- | Gets type constraint and records its annotation inside solver state
 --   This is for purely debug purposes
-checkpointAnnotSolve :: (Traceable t) => TypeConstraint t -> Solve t ()
+checkpointAnnotSolve :: (AST r t) => TypeConstraint r t -> Solve r t ()
 checkpointAnnotSolve (TypeConstraint l _) = do
   s <- get
   put s { lastAnnot = l, annotTrace = (annotTrace s) ++ [l] }
   return ()
 
 -- | Generate error payload from current solver state (for debug purposes)
-errSolvePayload :: (Traceable t) => Solve t (TypeErrorPayload t)
+errSolvePayload :: (AST r t) => Solve r t (TypeErrorPayload t)
 errSolvePayload = do
   s         <- get
   lastAnnot <- return $ lastAnnot s
   return $ lastAnnot
 
 -- | Runs solve monad for given contraints
-runSolve :: (Traceable t) => [TypeConstraint t] -> IO (Either (TypeError t) TypeSubstitution)
+runSolve :: (AST r t) => [TypeConstraint r t] -> IO (Either (TypeError r t) TypeSubstitution)
 runSolve cs = do
   r <- runExceptT (runStateT (solver (TypeUnifier cs emptySubst)) emptySolverState)
   case r of
@@ -67,7 +67,7 @@ runSolve cs = do
     Right (s, _) -> return $ Right s
 
 -- | Runs solver to unify all types
-solver :: (Traceable t) => (TypeUnifier t) -> Solve t TypeSubstitution
+solver :: (AST r t) => (TypeUnifier r t) -> Solve r t TypeSubstitution
 solver (TypeUnifier cs su) = case cs of
   [] -> return su
   ((TypeConstraint l (typeArgA, typeArgB)) : cs0) -> do
@@ -76,11 +76,11 @@ solver (TypeUnifier cs su) = case cs of
     solver $ TypeUnifier (su1 .> cs0) (su1 +> su)
 
 -- | Represents a data type that can bind values of one type to the other one
-class (Traceable t) => BindableSolve t a b where
-  (<-$->) :: a -> b -> Solve t TypeSubstitution
+class (AST r t) => BindableSolve r t a b where
+  (<-$->) :: a -> b -> Solve r t TypeSubstitution
 
 -- | This instance represents binding type variables to their types (creating contraints)
-instance (Traceable t) => BindableSolve t TypeVar Type where
+instance (AST r t) => BindableSolve r t TypeVar Type where
   (<-$->) a t = do
     payl <- errSolvePayload
     case a <-> t of
@@ -89,7 +89,7 @@ instance (Traceable t) => BindableSolve t TypeVar Type where
       (Right r)                 -> return r
 
 -- | This instance represents binding type to type (unification)
-instance (Traceable t) => BindableSolve t Type Type where
+instance (AST r t) => BindableSolve r t Type Type where
   (<-$->) typeArgA typeArgB | typeArgA == typeArgB                    = return emptySubst
   (<-$->) (TypeVar v)       t                 = v <-$-> t
   (<-$->) t                 (TypeVar  v     ) = v <-$-> t
@@ -109,7 +109,7 @@ instance (Traceable t) => BindableSolve t Type Type where
     throwError $ UnificationFail payl typeArgA typeArgB
 
 -- | It's useful to bind multiple types at the same time
-instance (Traceable t) => BindableSolve t [Type] [Type] where
+instance (AST r t) => BindableSolve r t [Type] [Type] where
   (<-$->) []        []        = return emptySubst
   (<-$->) (h1 : typeArgA) (h2 : typeArgB) = do
     uni1 <- h1 <-$-> h2

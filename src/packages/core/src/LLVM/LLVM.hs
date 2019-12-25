@@ -1,5 +1,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module LLVM.LLVM where
 import Text.RawString.QQ
 
@@ -15,6 +18,18 @@ import Control.Monad
 import Data.Array
 import qualified Data.Map as M
 import qualified Data.Text as T
+
+import Inference.Syntax
+import Analyzer.Analyzer
+import Lib
+
+instance Analyzable Program String where
+  emptyPayload = ""
+
+instance Compilable Program String where
+  parse (_, t0) source = let ts = myLexer source in case pProgram ts of
+    Bad e -> Left $ FailedParse $ show source
+    Ok r -> Right (r, t0)
 
 
 data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
@@ -77,7 +92,7 @@ generateAssignVarName False name = do
   env <- ask
   return (name, env)
 
-defaultCompilerLLVM :: Program -> Exec (String, Environment)
+defaultCompilerLLVM :: Compiler Program String
 defaultCompilerLLVM p = compilerLLVM defaultLLVMCompilerConfiguration p
 
 compile :: Program -> Exec ([LInstruction], Environment)
@@ -85,8 +100,8 @@ compile (Program statements) = do
   env <- ask
   return ([], env)
 
-compilerLLVM :: LLVMCompilerConfiguration -> Program -> Exec (String, Environment)
-compilerLLVM opts program@(Program statements) = do
+compilerLLVM :: LLVMCompilerConfiguration -> Compiler Program String
+compilerLLVM opts (program@(Program statements), _) = do
   _ <- liftIO $ putStrLn "Compile Instant code..."
   header <- return $ [r|declare void @printInt(i32)
        define i32 @main() {

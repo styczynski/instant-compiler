@@ -31,8 +31,8 @@ import qualified Data.Map                      as Map
 import qualified Data.Set                      as Set
 
 -- | Represents a type that can bind one type to the other one
-class (Traceable t) => Bindable t a b where
-  (<->)     :: a -> b -> Either (TypeError t) (Substitution a b)
+class (AST r t) => Bindable r t a b where
+  (<->)     :: a -> b -> Either (TypeError r t) (Substitution a b)
 
 class (Ord b) => WithFreedom a b where
   freeDimensions   :: a -> Set.Set b
@@ -58,7 +58,7 @@ class (WithFreedom a b) => Substitutable a b c where
   (.>)     :: (Substitution b c) -> a -> a
 
 -- | This is used to set type variables during construction of type contraints
-instance (Traceable t) => Bindable t TypeVar Type where
+instance (AST r t) => Bindable r t TypeVar Type where
   (<->) a t | t == (TypeVar a) = Right emptySubst
             | isRecursive a t  = Left $ InfiniteType EmptyPayload a t
             | otherwise        = Right (Subst $ Map.singleton a t)
@@ -100,12 +100,12 @@ instance Substitutable Scheme TypeVar Type where
   (.>) (Subst s) (Scheme vars t) =
     Scheme vars $ (Subst $ foldr Map.delete s vars) .> t
 
-instance (Traceable t) => WithFreedom (TypeConstraint t) TypeVar where
+instance (AST r t) => WithFreedom (TypeConstraint r t) TypeVar where
   freeDimensions (TypeConstraint _ (t1, t2)) =
     freeDimensions t1 `Set.union` freeDimensions t2
 
 -- | This is used to replace type variables within types
-instance (Traceable t) => Substitutable (TypeConstraint t) TypeVar Type where
+instance (AST r t) => Substitutable (TypeConstraint r t) TypeVar Type where
   (.>) s (TypeConstraint p (t1, t2)) =
     TypeConstraint p (s .> t1, s .> t2)
 

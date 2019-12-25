@@ -14,6 +14,9 @@ Portability : POSIX
   type assertions, dummy values (that do not exist, but have their exact type) and more
   contructions that make type inference easier to implement.
 -}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Inference.Simplifier where
 
 import           Syntax.Base
@@ -40,11 +43,13 @@ import qualified Data.Set                      as Set
 --        Simplification for various types of AST nodes         --
 ------------------------------------------------------------------
 
-instance Traceable Program where
+instance AST Program String where
+  getEmptyPayload _ = ""
+  getPayload a _ = (Program [], show a)
   toString p = show p
   simplify p = simplifyProgram p
 
-getPreface :: (Traceable t) => (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+getPreface :: (AST r t) => (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 getPreface p = do
   declareTypes [
     ("then", "'a -> 'b -> 'b"),
@@ -60,7 +65,7 @@ getPreface p = do
     ("==", "'a -> 'a -> Bool"),
     ("!=", "'a -> 'a -> Bool")] p
 
-simplifyProgram :: (Traceable t) => Program -> Infer t (SimplifiedExpr t)
+simplifyProgram :: (AST r t) => Program -> Infer r t (SimplifiedExpr r t)
 simplifyProgram (Program defs) = do
   u <- valueOfType "Unit"
   p0 <- foldrM (\def acc -> simplifyTopDef def acc) (SimplifiedCall (SimplifiedVariable $ Ident "main") u) defs
@@ -68,38 +73,38 @@ simplifyProgram (Program defs) = do
   --_ <- liftIO $ putStrLn $ show p
   return p
 
-simplifyTopDef :: (Traceable t) => TopDef -> (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+simplifyTopDef :: (AST r t) => TopDef -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 simplifyTopDef ast@(FnDef retType name args body) expr = do
-  markTrace ast
-  b <- simplifyBlock body
+  markTrace expr ast
+  b <- simplifyBlock body expr
   l <- createLambda (map (\(Arg typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
   tl <- return $ SimplifiedLet name l expr
   _ <- liftIO $ putStrLn $ show tl
   r <- addExprAnnot $ return tl
-  unmarkTrace ast
+  unmarkTrace expr ast
   return r
 
-simplifyBlock :: (Traceable t) => Block -> Infer t (SimplifiedExpr t)
-simplifyBlock ast@(Block statements) = do
-  markTrace ast
+simplifyBlock :: (AST r t) => Block -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
+simplifyBlock ast@(Block statements) expr = do
+  markTrace expr ast
   u <- valueOfType "Unit"
   r <- foldrM (\stmt acc -> simplifyStatement acc stmt) u statements
   r <- addExprAnnot $ return r
-  unmarkTrace ast
+  unmarkTrace expr ast
   return r
 
-simplifyStatement :: (Traceable t) => (SimplifiedExpr t) -> Stmt -> Infer t (SimplifiedExpr t)
+simplifyStatement :: (AST r t) => (SimplifiedExpr r t) -> Stmt -> Infer r t (SimplifiedExpr r t)
 simplifyStatement expr (Decl typeName inits) = do
   foldM (simplifyStatementDecl typeName) expr inits
 simplifyStatement expr (SExp stmtExpr) = do
-  e <- simplifyExpr stmtExpr
+  e <- simplifyExpr stmtExpr expr
   return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) e) expr
 simplifyStatement _ VRet = valueOfType "Unit"
-simplifyStatement _ (Ret retExpr) = do
-  e <- simplifyExpr retExpr
+simplifyStatement expr (Ret retExpr) = do
+  e <- simplifyExpr retExpr expr
   return e
 
-getTypeDefaultValue :: (Traceable t) => TypeName -> (SimplifiedExpr t)
+getTypeDefaultValue :: (AST r t) => TypeName -> (SimplifiedExpr r t)
 getTypeDefaultValue Int = SimplifiedConstInt 0
 getTypeDefaultValue Str = SimplifiedConstString ""
 getTypeDefaultValue Bool = SimplifiedConstBool False
@@ -110,23 +115,23 @@ getTypeName Bool = "Bool"
 getTypeName Str = "String"
 getTypeName Void = "Unit"
 
-getTypeDefaultAnnot :: (Traceable t) => TypeName -> (SimplifiedExpr t) -> Infer t (SimplifiedExpr t)
+getTypeDefaultAnnot :: (AST r t) => TypeName -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 getTypeDefaultAnnot typeName e = checkType (getTypeName typeName) e
 
-simplifyStatementDecl :: (Traceable t) => TypeName -> (SimplifiedExpr t) -> Item -> Infer t (SimplifiedExpr t)
+simplifyStatementDecl :: (AST r t) => TypeName -> (SimplifiedExpr r t) -> Item -> Infer r t (SimplifiedExpr r t)
 simplifyStatementDecl typeName expr ast@(NoInit name) = do
-  markTrace ast
+  markTrace expr ast
   r <- return $ SimplifiedLet name (getTypeDefaultValue typeName) expr
   r <- addExprAnnot $ return r
-  unmarkTrace ast
+  unmarkTrace expr ast
   return r
 simplifyStatementDecl typeName expr ast@(Init name initExpr) = do
-  markTrace ast
-  e <- simplifyExpr initExpr
+  markTrace expr ast
+  e <- simplifyExpr initExpr expr
   annotExp <- getTypeDefaultAnnot typeName e
   r <- return $ SimplifiedLet name annotExp expr
   r <- addExprAnnot $ return r
-  unmarkTrace ast
+  unmarkTrace expr ast
   return r
 
 
@@ -147,46 +152,46 @@ getRelOpName GE = ">="
 getRelOpName EQU = "=="
 getRelOpName NE = "!="
 
-getAppArgs :: (Traceable t) => [(SimplifiedExpr t)] -> Infer t [(SimplifiedExpr t)]
+getAppArgs :: (AST r t) => [(SimplifiedExpr r t)] -> Infer r t [(SimplifiedExpr r t)]
 getAppArgs [] = do
   u <- valueOfType "Unit"
   return [u]
 getAppArgs args = return args
 
-simplifyExpr :: (Traceable t) => Expr -> Infer t (SimplifiedExpr t)
-simplifyExpr e = do
-  markTrace e
-  r <- simplifyExpr_ e
+simplifyExpr :: (AST r t) => Expr -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
+simplifyExpr e expr = do
+  markTrace expr e
+  r <- simplifyExpr_ e expr
   r <- addExprAnnot $ return r
-  unmarkTrace e
+  unmarkTrace expr e
   return r
 
 
-simplifyExpr_ :: (Traceable t) => Expr -> Infer t (SimplifiedExpr t)
-simplifyExpr_ (EVar name) = return $ SimplifiedVariable name
-simplifyExpr_ (ELitInt val) = return $ SimplifiedConstInt val
-simplifyExpr_ (EString val) = return $ SimplifiedConstString val
-simplifyExpr_ ELitTrue = return $ SimplifiedConstBool True
-simplifyExpr_ ELitFalse = return $ SimplifiedConstBool False
-simplifyExpr_ (Neg expr) = do
-  e <- simplifyExpr expr
+simplifyExpr_ :: (AST r t) => Expr -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
+simplifyExpr_ (EVar name) _ = return $ SimplifiedVariable name
+simplifyExpr_ (ELitInt val) _ = return $ SimplifiedConstInt val
+simplifyExpr_ (EString val) _ = return $ SimplifiedConstString val
+simplifyExpr_ ELitTrue _ = return $ SimplifiedConstBool True
+simplifyExpr_ ELitFalse _ = return $ SimplifiedConstBool False
+simplifyExpr_ (Neg expr) e = do
+  e <- simplifyExpr expr e
   createNameCall "neg" [e]
-simplifyExpr_ (Not expr) = do
-  e <- simplifyExpr expr
+simplifyExpr_ (Not expr) e = do
+  e <- simplifyExpr expr e
   createNameCall "not" [e]
-simplifyExpr_ (EMul expr1 op expr2) = do
-  e1 <- simplifyExpr expr1
-  e2 <- simplifyExpr expr2
+simplifyExpr_ (EMul expr1 op expr2) e = do
+  e1 <- simplifyExpr expr1 e
+  e2 <- simplifyExpr expr2 e
   createNameCall (getMulOpName op) [e1, e2]
-simplifyExpr_ (ERel expr1 op expr2) = do
-  e1 <- simplifyExpr expr1
-  e2 <- simplifyExpr expr2
+simplifyExpr_ (ERel expr1 op expr2) e = do
+  e1 <- simplifyExpr expr1 e
+  e2 <- simplifyExpr expr2 e
   createNameCall (getRelOpName op) [e1, e2]
-simplifyExpr_ (EAdd expr1 op expr2) = do
-  e1 <- simplifyExpr expr1
-  e2 <- simplifyExpr expr2
+simplifyExpr_ (EAdd expr1 op expr2) e = do
+  e1 <- simplifyExpr expr1 e
+  e2 <- simplifyExpr expr2 e
   createNameCall (getAddOpName op) [e1, e2]
-simplifyExpr_ (EApp (Ident name) exprs) = do
-  exprsSimpl <- mapM simplifyExpr exprs
+simplifyExpr_ (EApp (Ident name) exprs) e = do
+  exprsSimpl <- mapM (\expr -> simplifyExpr expr e) exprs
   args <- getAppArgs exprsSimpl
   createNameCall name args

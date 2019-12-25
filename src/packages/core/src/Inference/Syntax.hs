@@ -14,6 +14,9 @@ Portability : POSIX
   type assertions, dummy values (that do not exist, but have their exact type) and more
   constructions that make type inference easier to implement.
 -}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module Inference.Syntax where
 
 import           Syntax.Base hiding ( TypeConstraint )
@@ -34,62 +37,64 @@ type TypeSubstitution = Substitution TypeVar Type
 emptySubst :: TypeSubstitution
 emptySubst = Subst $ Map.empty
 
--- | Traceable
-class (Show t) => Traceable t where
+-- | AST class
+class (Show t, Show r) => AST r t | r -> t where
+  getEmptyPayload :: r -> t
+  getPayload :: (Print a, Show a) => a -> (SimplifiedExpr r t) -> (r, t)
   toString :: t -> String
-  simplify :: t -> Infer t (SimplifiedExpr t)
+  simplify :: r -> Infer r t (SimplifiedExpr r t)
 
 -- | Payload for typechecking errors
-data (Traceable t) => TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show)
+data TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show)
 
 -- | Type constraints with error payload annotation and unifier for types
-data (Traceable t) => TypeConstraint t = TypeConstraint (TypeErrorPayload t) (Type, Type) deriving (Show)
-data (Traceable t) => TypeUnifier t = NoUnifier | TypeUnifier [TypeConstraint t] TypeSubstitution
-
+data (AST r t) => TypeConstraint r t = TypeConstraint (TypeErrorPayload t) (Type, Type) deriving (Show)
+data (AST r t) => TypeUnifier r t = NoUnifier | TypeUnifier [TypeConstraint r t] TypeSubstitution
 -- | Base inference monad and state
-type Infer t
-  = StateT (InferState t) (ReaderT (TypeEnvironment) (ExceptT (TypeError t) IO))
-data (Traceable t) => InferState t = InferState {
+type Infer r t
+  = StateT (InferState r t) (ReaderT (TypeEnvironment) (ExceptT (TypeError r t) IO))
+data (AST r t) => InferState r t = InferState {
   count :: Int,
   tCount :: Int,
   tagMap :: Map.Map String Int,
   inferTrace :: [TypeErrorPayload t],
-  lastInferExpr :: TypeErrorPayload t
+  lastInferExpr :: TypeErrorPayload t,
+  root :: r
 }
 
 -- | Base typechecking errors
-data (Traceable t) => TypeError t
+data (AST r t) => TypeError r t
   = UnificationFail (TypeErrorPayload t) Type Type
   | InfiniteType (TypeErrorPayload t) TypeVar Type
   | UnboundVariable (TypeErrorPayload t) Ident
-  | Ambigious (TypeErrorPayload t) [TypeConstraint t]
+  | Ambigious (TypeErrorPayload t) [TypeConstraint r t]
   | UnificationMismatch (TypeErrorPayload t) [Type] [Type]
   | Debug (TypeErrorPayload t) String
   deriving (Show)
 
 -- | Simplified AST representation
-data (Traceable t) => SimplifiedExpr t
+data (AST r t) => SimplifiedExpr r t
   = SimplifiedVariable Ident
-  | SimplifiedCall (SimplifiedExpr t) (SimplifiedExpr t)
-  | SimplifiedFunction Ident (SimplifiedExpr t)
-  | SimplifiedLet Ident (SimplifiedExpr t) (SimplifiedExpr t)
-  | SimplifiedLetAs Ident (SimplifiedExpr t) (SimplifiedExpr t) (SimplifiedExpr t)
-  | SimplifiedIf (SimplifiedExpr t) (SimplifiedExpr t) (SimplifiedExpr t)
-  | SimplifiedFixPoint (SimplifiedExpr t)
-  | SimplifiedBinaryOp BinaryOp (SimplifiedExpr t) (SimplifiedExpr t)
-  | SimplifiedUnaryOp UnaryOp (SimplifiedExpr t)
+  | SimplifiedCall (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedFunction Ident (SimplifiedExpr r t)
+  | SimplifiedLet Ident (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedLetAs Ident (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedIf (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedFixPoint (SimplifiedExpr r t)
+  | SimplifiedBinaryOp BinaryOp (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedUnaryOp UnaryOp (SimplifiedExpr r t)
   | SimplifiedSkip
-  | SimplifiedCheck (SimplifiedExpr t) Scheme
+  | SimplifiedCheck (SimplifiedExpr r t) Scheme
   | SimplifiedExportEnv
   | SimplifiedTyped Scheme
-  | SimplifiedAnnotated t (SimplifiedExpr t)
+  | SimplifiedAnnotated t (SimplifiedExpr r t)
   | SimplifiedConstBool Bool
   | SimplifiedConstInt Integer
   | SimplifiedConstString String
-  | SimplifiedTag Ident (SimplifiedExpr t)
-  | SimplifiedTagUnpack Ident (SimplifiedExpr t)
-  | SimplifiedTagUnpackNonStrict Ident (SimplifiedExpr t)
-  | SimplifiedAlternatives [(SimplifiedExpr t)]
+  | SimplifiedTag Ident (SimplifiedExpr r t)
+  | SimplifiedTagUnpack Ident (SimplifiedExpr r t)
+  | SimplifiedTagUnpackNonStrict Ident (SimplifiedExpr r t)
+  | SimplifiedAlternatives [(SimplifiedExpr r t)]
   deriving (Show, Eq)
 
 -- | Binary operation

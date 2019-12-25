@@ -6,6 +6,7 @@ import           Control.Monad.State
 import           Control.Monad.Identity
 import           Control.Monad.Reader
 import           Data.Map.Lazy
+import           Inference.Syntax
 import qualified Data.Map.Lazy as M
 
 data CompilerState = CompilerState {}
@@ -34,7 +35,7 @@ data ExecutionResult = FailedParse String | FailedCompilation String | Compiled 
 type Exec
   = StateT (CompilerState) (ReaderT (Environment) (ExceptT String IO))
 
-type Compiler = Program -> Exec (String, Environment)
+type Compiler r t = (r,t) -> Exec (String, Environment)
 
 getUniqueNameFrom :: String -> Int -> String
 getUniqueNameFrom prefix index = prefix ++ "__var_" ++ show index
@@ -87,12 +88,12 @@ getVar name env = let var = getVarFromScope name env in case var of
   Just v -> getVarLocByID v env
   Nothing -> Nothing
 
-runAST :: Program -> Environment -> Compiler -> IO ExecutionResult
-runAST tree env compiler = do
+runAST :: (AST r t) => (r, t) -> Environment -> Compiler r t -> IO ExecutionResult
+runAST s0 env compiler = do
   r <- runExceptT
     (runReaderT
       (runStateT
-        (compiler tree)
+        (compiler s0)
         (CompilerState {}
         )
       )

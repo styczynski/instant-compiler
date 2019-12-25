@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Lib where
 
 import Compiler.Compiler
@@ -10,27 +11,30 @@ someFunc = putStrLn "someFunc"
 
 type Verbosity = Int
 
-runInit :: Environment -> IO Environment
-runInit env = return env
+class (Analyzable r t) => Compilable r t where
+  parse :: (r, t) -> String -> Either ExecutionResult (r, t)
 
-runInitEmpty :: IO Environment
-runInitEmpty = runInit emptyEnv
+  runInit :: (r, t) -> Environment -> IO Environment
+  runInit _ env = return env
 
-runWith :: Compiler -> Verbosity -> String -> Environment -> IO ExecutionResult
-runWith compiler v s env = do
-    r <- runCWith compiler v s env
-    return r
+  runInitEmpty :: (r, t) -> IO Environment
+  runInitEmpty s0 = runInit s0 emptyEnv
 
-runCWith :: Compiler -> Verbosity -> String -> Environment -> IO ExecutionResult
-runCWith compiler v s env = let ts = myLexer s in case pProgram ts of
-          Bad s    -> return $ FailedParse $ show s
-          Ok  tree -> do
-                        _ <- runAnalyzer tree env analyze
-                        _ <- return $ assert False 0
-                        res <- runAST tree env compiler
-                        return res
+  runWith :: (r, t) -> Compiler r t -> Verbosity -> String -> Environment -> IO ExecutionResult
+  runWith s0 compiler v s env = do
+      r <- runCWith s0 compiler v s env
+      return r
 
-run :: Compiler -> Verbosity -> String -> IO ExecutionResult
-run compiler v s = do
-  initEnv <- runInitEmpty
-  runWith compiler v s initEnv
+  runCWith :: (r, t) -> Compiler r t -> Verbosity -> String -> Environment -> IO ExecutionResult
+  runCWith (r0, t0) compiler v s env = case parse (r0, t0) s of --let ts = myLexer s in case pProgram ts of
+            Left e    -> return $ e --FailedParse $ show s
+            Right  (tree, t0) -> do
+                _ <- analyze tree t0 env
+                _ <- return $ assert False 0
+                res <- runAST (r0, t0) env compiler
+                return res
+
+  run :: (r, t) -> Compiler r t -> Verbosity -> String -> IO ExecutionResult
+  run s0 compiler v s = do
+    initEnv <- runInitEmpty s0
+    runWith s0 compiler v s initEnv
