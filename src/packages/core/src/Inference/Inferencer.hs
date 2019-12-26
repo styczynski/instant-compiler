@@ -158,7 +158,7 @@ infer (SimplifiedConstBool   _) = return ((TypeStatic "Bool"), [])
 infer (SimplifiedConstString _) = return ((TypeStatic "String"), [])
 infer (SimplifiedAnnotated l t) = do
   s <- get
-  put s { lastInferExpr = TypeErrorPayload l }
+  put s { inferTrace = l }
   infer t
 infer (SimplifiedTyped (Scheme _ t)) = return (t, [])
 infer (SimplifiedExportEnv         ) = do

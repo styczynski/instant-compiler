@@ -23,10 +23,10 @@ import Inference.Syntax
 import Analyzer.Analyzer
 import Lib
 
-instance Analyzable Program String where
-  emptyPayload = ""
+instance Analyzable Program ASTNode where
+  emptyPayload = ASTNone
 
-instance Compilable Program String where
+instance Compilable Program ASTNode where
   parse (_, t0) source = let ts = myLexer source in case pProgram ts of
     Bad e -> Left $ FailedParse $ show source
     Ok r -> Right (r, t0)
@@ -92,7 +92,7 @@ generateAssignVarName False name = do
   env <- ask
   return (name, env)
 
-defaultCompilerLLVM :: Compiler Program String
+defaultCompilerLLVM :: Compiler Program ASTNode
 defaultCompilerLLVM p = compilerLLVM defaultLLVMCompilerConfiguration p
 
 compile :: Program -> Exec ([LInstruction], Environment)
@@ -100,7 +100,7 @@ compile (Program statements) = do
   env <- ask
   return ([], env)
 
-compilerLLVM :: LLVMCompilerConfiguration -> Compiler Program String
+compilerLLVM :: LLVMCompilerConfiguration -> Compiler Program ASTNode
 compilerLLVM opts (program@(Program statements), _) = do
   _ <- liftIO $ putStrLn "Compile Instant code..."
   header <- return $ [r|declare void @printInt(i32)

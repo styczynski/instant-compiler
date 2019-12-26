@@ -60,7 +60,7 @@ class (WithFreedom a b) => Substitutable a b c where
 -- | This is used to set type variables during construction of type contraints
 instance (AST r t) => Bindable r t TypeVar Type where
   (<->) a t | t == (TypeVar a) = Right emptySubst
-            | isRecursive a t  = Left $ InfiniteType EmptyPayload a t
+            | isRecursive a t  = Left $ InfiniteType [] a t
             | otherwise        = Right (Subst $ Map.singleton a t)
 
 instance WithFreedom Type TypeVar where

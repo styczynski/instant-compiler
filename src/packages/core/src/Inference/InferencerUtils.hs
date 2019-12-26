@@ -40,37 +40,40 @@ import qualified Data.Set                      as Set
 addExprAnnot :: (AST r t) => Infer r t (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 addExprAnnot inExpr = do
   s             <- get
-  (TypeErrorPayload inferTraceTop) <-
-    return
-      $ let InferState { inferTrace = inferTrace } = s
-        in  let (h : _) = inferTrace in h
+  inferTraceTop <- return $ inferTrace s
   e <- inExpr
   return $ SimplifiedAnnotated inferTraceTop e
 
 -- | Adds new inference trace node (for debugging purposes)
-markTrace :: (AST r t, Show a, Print a) => (SimplifiedExpr r t) -> a -> Infer r t ()
+markTrace :: (AST r t) => (SimplifiedExpr r t) -> t -> Infer r t ()
 markTrace expr a = do
   s          <- get
   inferTrace <-
     return $ let InferState { inferTrace = inferTrace } = s in inferTrace
-  put s { inferTrace = ([TypeErrorPayload $ snd ((getPayload a expr))] ++ inferTrace) }
+  put s { inferTrace = (inferTrace ++ [ TypeErrorPayload a ]) }
   return ()
 
 -- | Removes inference trace node (for debugging purposes)
+-- TODO: This is fucked up
 unmarkTrace :: (AST r t, Show a, Print a) => (SimplifiedExpr r t) -> a -> Infer r t ()
 unmarkTrace _ a = do
-  s        <- get
-  newTrace <-
-    return
-      $ let InferState { inferTrace = inferTrace } = s in drop 1 inferTrace
-  put s { inferTrace = newTrace }
+  s          <- get
+  inferTrace <-
+    return $ let InferState { inferTrace = inferTrace } = s in inferTrace
+  put s { inferTrace = (inferTrace ++ [ EmptyPayload ]) }
   return ()
+--  s        <- get
+--  newTrace <-
+--    return
+--      $ let InferState { inferTrace = inferTrace } = s in drop 1 inferTrace
+--  put s { inferTrace = newTrace }
+--  return ()
 
 -- | Generates error payload for current inference trace (for debugging purposes)
-errPayload :: (AST r t) => Infer r t (TypeErrorPayload t)
+errPayload :: (AST r t) => Infer r t [TypeErrorPayload t]
 errPayload = do
   s            <- get
-  lastTraceStr <- return $ lastInferExpr s
+  lastTraceStr <- return $ inferTrace s
   return $ lastTraceStr
 
 -- | Performs env ?? name operation but throws error if it fails

@@ -41,14 +41,15 @@ emptySubst = Subst $ Map.empty
 class (Show t, Show r) => AST r t | r -> t where
   getEmptyPayload :: r -> t
   getPayload :: (Print a, Show a) => a -> (SimplifiedExpr r t) -> (r, t)
-  toString :: t -> String
+  describeErrors :: r -> [t] -> String
+  describeTraceItem :: r -> t -> String
   simplify :: r -> Infer r t (SimplifiedExpr r t)
 
 -- | Payload for typechecking errors
-data TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show)
+data TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show, Eq)
 
 -- | Type constraints with error payload annotation and unifier for types
-data (AST r t) => TypeConstraint r t = TypeConstraint (TypeErrorPayload t) (Type, Type) deriving (Show)
+data (AST r t) => TypeConstraint r t = TypeConstraint [TypeErrorPayload t] (Type, Type) deriving (Show)
 data (AST r t) => TypeUnifier r t = NoUnifier | TypeUnifier [TypeConstraint r t] TypeSubstitution
 -- | Base inference monad and state
 type Infer r t
@@ -58,18 +59,17 @@ data (AST r t) => InferState r t = InferState {
   tCount :: Int,
   tagMap :: Map.Map String Int,
   inferTrace :: [TypeErrorPayload t],
-  lastInferExpr :: TypeErrorPayload t,
   root :: r
 }
 
 -- | Base typechecking errors
 data (AST r t) => TypeError r t
-  = UnificationFail (TypeErrorPayload t) Type Type
-  | InfiniteType (TypeErrorPayload t) TypeVar Type
-  | UnboundVariable (TypeErrorPayload t) Ident
-  | Ambigious (TypeErrorPayload t) [TypeConstraint r t]
-  | UnificationMismatch (TypeErrorPayload t) [Type] [Type]
-  | Debug (TypeErrorPayload t) String
+  = UnificationFail [TypeErrorPayload t] Type Type
+  | InfiniteType [TypeErrorPayload t] TypeVar Type
+  | UnboundVariable [TypeErrorPayload t] Ident
+  | Ambigious [TypeErrorPayload t] [TypeConstraint r t]
+  | UnificationMismatch [TypeErrorPayload t] [Type] [Type]
+  | Debug [TypeErrorPayload t] String
   deriving (Show)
 
 -- | Simplified AST representation
@@ -87,7 +87,7 @@ data (AST r t) => SimplifiedExpr r t
   | SimplifiedCheck (SimplifiedExpr r t) Scheme
   | SimplifiedExportEnv
   | SimplifiedTyped Scheme
-  | SimplifiedAnnotated t (SimplifiedExpr r t)
+  | SimplifiedAnnotated [TypeErrorPayload t] (SimplifiedExpr r t)
   | SimplifiedConstBool Bool
   | SimplifiedConstInt Integer
   | SimplifiedConstString String

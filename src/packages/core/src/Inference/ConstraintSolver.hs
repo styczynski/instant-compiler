@@ -35,27 +35,30 @@ type Solve r t = StateT (SolverState r t) (ExceptT (TypeError r t) IO)
 
 -- | Solver state
 data (AST r t) => SolverState r t = SolverState {
-  lastAnnot :: TypeErrorPayload t,
   annotTrace :: [TypeErrorPayload t]
 }
 
 -- | Empty solver state
 emptySolverState :: (AST r t) => SolverState r t
-emptySolverState = SolverState { lastAnnot = EmptyPayload, annotTrace = [] }
+emptySolverState = SolverState { annotTrace = [] }
 
 -- | Gets type constraint and records its annotation inside solver state
 --   This is for purely debug purposes
 checkpointAnnotSolve :: (AST r t) => TypeConstraint r t -> Solve r t ()
 checkpointAnnotSolve (TypeConstraint l _) = do
   s <- get
-  put s { lastAnnot = l, annotTrace = (annotTrace s) ++ [l] }
+  put s { annotTrace = l }
   return ()
 
 -- | Generate error payload from current solver state (for debug purposes)
-errSolvePayload :: (AST r t) => Solve r t (TypeErrorPayload t)
+errSolvePayload :: (AST r t) => Solve r t [TypeErrorPayload t]
 errSolvePayload = do
   s         <- get
-  lastAnnot <- return $ lastAnnot s
+  lastAnnot <- return $ annotTrace s
+  --lastAnnot <- return $ foldr (\el acc -> case el of
+  --  EmptyPayload -> if (length acc) > 0 then init acc else []
+  --  v -> acc ++ [v]) [] (annotTrace s)
+  --lastAnnot <- return $ foldl (\x y -> y:x) [] lastAnnot
   return $ lastAnnot
 
 -- | Runs solve monad for given contraints
@@ -71,6 +74,9 @@ solver :: (AST r t) => (TypeUnifier r t) -> Solve r t TypeSubstitution
 solver (TypeUnifier cs su) = case cs of
   [] -> return su
   ((TypeConstraint l (typeArgA, typeArgB)) : cs0) -> do
+    -- TODO: Remove comments
+    --_ <- liftIO $ liftIO $ liftIO $ putStrLn "AAAAAA"
+    --_ <- liftIO $ liftIO $ liftIO $ putStrLn $ show l
     checkpointAnnotSolve (TypeConstraint l (typeArgA, typeArgB))
     su1 <- typeArgA <-$-> typeArgB
     solver $ TypeUnifier (su1 .> cs0) (su1 +> su)

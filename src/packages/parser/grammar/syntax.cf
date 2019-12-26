@@ -156,3 +156,14 @@ coercions            TypeExpression      5 ;
 
 TypeConstrDef.      TypeConstraint      ::= ":" TypeExpression ;
 TypeConstrEmpty.    TypeConstraint      ::= "" ;
+
+-- error payload ----
+
+internal ASTProgram. ASTNode ::= Program ;
+internal ASTExpr. ASTNode ::= Expr ;
+internal ASTStmt. ASTNode ::= Stmt ;
+internal ASTBlock. ASTNode ::= Block ;
+internal ASTTopDef. ASTNode ::= TopDef ;
+internal ASTTypeName. ASTNode ::= TypeName ;
+internal ASTItem. ASTNode ::= Item ;
+internal ASTNone. ASTNode ::= "empty-ast" ;

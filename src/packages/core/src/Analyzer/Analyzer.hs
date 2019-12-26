@@ -13,6 +13,7 @@ import qualified Data.Map.Lazy as M
 import           Compiler.Compiler
 
 import           Inference.Syntax
+import           Inference.Errors
 import           Inference.Inferencer
 import           Inference.TypingEnvironment as TE
 
@@ -25,17 +26,15 @@ class (AST r t) => Analyzable r t where
                          , tCount        = 0
                          , tagMap        = M.empty
                          , inferTrace    = []
-                         , lastInferExpr = EmptyPayload
                          , root = r
                          }
   analyzer :: Analyzer r t
   analyzer ast t0 = do
     r <- liftIO $ inferAST TE.empty (emptyInfer ast t0) ast
-    str <- return
-         (case r of
-           Left err -> (show err)
-           Right (scheme, _, _) -> (show scheme)
-         )
+    str <- liftIO $ liftIO $ liftIO $ (case r of
+       Left err -> (typeErrorToStr (ast, t0) err)
+       Right (scheme, _, _) -> return (show scheme)
+     )
     return str
   analyze :: r -> t -> Environment -> IO String
   analyze tree t0 env = do
@@ -50,8 +49,8 @@ class (AST r t) => Analyzable r t where
      )
    result <- return
        (case r of
-         Left err -> (show err)
+         Left err -> err
          Right (res, _) -> res
        )
-   putStrLn $ "inference: " ++ result
+   putStrLn result
    return result
