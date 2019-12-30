@@ -70,14 +70,20 @@ describeError r (ASTNone _) = "<none>"
 getPreface :: (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 getPreface p = do
   declareTypes [
+    ("ignore", "'a -> Void"),
+    ("printInt", "Int -> Void"),
     ("then", "'a -> 'b -> 'b"),
     ("not", "Bool -> Bool"),
     ("neg", "Int -> Int"),
     ("+", "Int -> Int -> Int"),
+    ("++", "Int -> Int"),
     ("-", "Int -> Int -> Int"),
     ("/", "Int -> Int -> Int"),
     ("*", "Int -> Int -> Int"),
-    ("=", "'a -> 'a -> Bool"),
+    ("%", "Int -> Int -> Int"),
+    ("=", "'a -> 'a -> 'a"),
+    ("<", "'a -> 'a -> Bool"),
+    (">", "'a -> 'a -> Bool"),
     ("<=", "'a -> 'a -> Bool"),
     (">=", "'a -> 'a -> Bool"),
     ("==", "'a -> 'a -> Bool"),
@@ -97,7 +103,8 @@ simplifyTopDef ast@(FnDef meta retType name args body) expr = do
   b <- simplifyBlock body expr
   l <- createLambda (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
   tl <- return $ SimplifiedLet name l expr
-  -- _ <- liftIO $ putStrLn $ show tl
+  --_ <- liftIO $ putStrLn $ "\n\nTop def:\n"
+  --_ <- liftIO $ putStrLn $ show tl
   r <- addExprAnnot $ return tl
   unmarkTrace expr ast
   return r
@@ -118,10 +125,63 @@ simplifyStatement expr ast@(Decl meta typeName inits) = do
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
+simplifyStatement expr ast@(Ass meta name exprVal) = do
+  markTrace expr $ ASTStmt meta ast
+  valSimpl <- simplifyExpr exprVal SimplifiedSkip
+  callSimpl <-  return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "=")) (SimplifiedVariable name)) valSimpl
+  r <- return $ SimplifiedLet name callSimpl expr
+  r <- addExprAnnot $ return r
+  unmarkTrace expr ast
+  return r
+simplifyStatement expr ast@(While meta exprCond stmtExpr) = do
+  markTrace expr $ ASTStmt meta ast
+  condSimpl <- simplifyExpr exprCond SimplifiedSkip
+  bodySimpl <- simplifyStatement SimplifiedSkip stmtExpr
+  whileCheckType <- return $ Scheme [] $ (TypeStatic "Bool")
+  condSimplChecked <- return $ SimplifiedCheck condSimpl whileCheckType
+  id <- freshIdent
+  r <- return $ SimplifiedLet id condSimplChecked bodySimpl
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
+  r <- addExprAnnot $ return r
+  unmarkTrace expr ast
+  return r
+simplifyStatement expr ast@(CondElse meta exprCond stmtThen stmtElse) = do
+  markTrace expr $ ASTStmt meta ast
+  condSimpl <- simplifyExpr exprCond SimplifiedSkip
+  thenSimpl <- simplifyStatement SimplifiedSkip stmtThen
+  elseSimpl <- simplifyStatement SimplifiedSkip stmtElse
+  r <- return $ SimplifiedIf condSimpl (SimplifiedCall (SimplifiedVariable $ Ident "ignore") thenSimpl) (SimplifiedCall (SimplifiedVariable $ Ident "ignore") elseSimpl)
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
+  r <- addExprAnnot $ return r
+  unmarkTrace expr ast
+  return r
+simplifyStatement expr ast@(Cond meta exprCond stmtThen) = do
+  markTrace expr $ ASTStmt meta ast
+  condSimpl <- simplifyExpr exprCond SimplifiedSkip
+  thenSimpl <- simplifyStatement SimplifiedSkip stmtThen
+  elseSimpl <- valueOfType "Void"
+  r <- return $ SimplifiedIf condSimpl (SimplifiedCall (SimplifiedVariable $ Ident "ignore") thenSimpl) (SimplifiedCall (SimplifiedVariable $ Ident "ignore") elseSimpl)
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
+  r <- addExprAnnot $ return r
+  unmarkTrace expr ast
+  return r
 simplifyStatement expr ast@(SExp meta stmtExpr) = do
   markTrace expr $ ASTStmt meta ast
   e <- simplifyExpr stmtExpr expr
   r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) e) expr
+  r <- addExprAnnot $ return r
+  unmarkTrace expr ast
+  return r
+simplifyStatement expr ast@(BStmt meta block) = do
+   markTrace expr $ ASTStmt meta ast
+   r <- simplifyBlock block expr
+   r <- addExprAnnot $ return r
+   unmarkTrace expr ast
+   return r
+simplifyStatement expr ast@(Incr meta ident) = do
+  markTrace expr $ ASTStmt meta ast
+  rVal <- return $ SimplifiedCall (SimplifiedVariable $ Ident "++") (SimplifiedVariable ident)
+  r <- return $ SimplifiedLet ident rVal expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -183,6 +243,8 @@ getRelOpName (LTH _) = "<"
 getRelOpName (LE _) = "<="
 getRelOpName (GTH _) = ">"
 getRelOpName (GE _) = ">="
+getRelOpName (LTH _) = "<"
+getRelOpName (GTH _) = ">"
 getRelOpName (EQU _) = "=="
 getRelOpName (NE _) = "!="
 

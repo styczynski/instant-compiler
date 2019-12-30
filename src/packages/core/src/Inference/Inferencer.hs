@@ -110,6 +110,7 @@ inferProgram
   :: (AST r t) => r -> Infer r t (TypeEnvironment, Type, [TypeConstraint r t])
 inferProgram ast = do
   simpl <- simplify ast
+  -- _ <- liftIO $ liftIO $ liftIO $ putStrLn $ show simpl
   env <- ask
   (simplT, simplC) <- infer simpl
   return (env, simplT, simplC)
@@ -240,7 +241,7 @@ infer (SimplifiedIf cond tr fl) = do
   (type1, constraintype1) <- infer cond
   (type2, constraintype2) <- infer tr
   (type3, constraint3) <- infer fl
-  bindExpr1     <- type1 <.> (TypeStatic "bool")
+  bindExpr1     <- type1 <.> (TypeStatic "Bool")
   bindExpr2     <- (type2 <.> type3)
   ac       <- constraintAnnoTypeList [bindExpr1, bindExpr2]
   return (type2, constraintype1 ++ constraintype2 ++ constraint3 ++ ac)
