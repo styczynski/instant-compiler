@@ -43,31 +43,31 @@ import qualified Data.Set                      as Set
 --        Simplification for various types of AST nodes         --
 ------------------------------------------------------------------
 
-instance AST Program ASTNode where
-  getEmptyPayload _ = ASTNone
+instance AST (Program ASTMetadata) (ASTNode ASTMetadata) where
+  getEmptyPayload _ = ASTNone EmptyMetadata
   simplify p = simplifyProgram p
   describeErrors r payl = intercalate "" $ map (\p -> describeError r p) payl
-  describeTraceItem r (ASTProgram ast) = "Program entry"
-  describeTraceItem r (ASTTopDef ast@(FnDef typ (Ident name) arg _)) = "Top definition for \"" ++ name ++ "\": " ++ (prettifyErrorMessage True $ printTree $ FnDef typ (Ident name) arg (Block []))
-  describeTraceItem r (ASTTypeName ast) = "Type name: " ++ (prettifyErrorMessage False $ printTree ast)
-  describeTraceItem r (ASTStmt ast) = "Block statement: " ++ (prettifyErrorMessage False $ printTree ast)
-  describeTraceItem r (ASTBlock ast) = "Block of code"
-  describeTraceItem r (ASTItem ast) = "Item definition: " ++ (prettifyErrorMessage False $ printTree ast)
-  describeTraceItem r (ASTExpr ast) = "Expression: " ++ (prettifyErrorMessage False $ printTree ast)
+  describeTraceItem r (ASTProgram _ ast) = "Program entry"
+  describeTraceItem r (ASTTopDef _ ast@(FnDef meta typ (Ident name) arg _)) = "Top definition for \"" ++ name ++ "\": " ++ (prettifyErrorMessage True $ printTree $ FnDef meta typ (Ident name) arg (Block EmptyMetadata []))
+  describeTraceItem r (ASTTypeName _ ast) = "Type name: " ++ (prettifyErrorMessage False $ printTree ast)
+  describeTraceItem r (ASTStmt _ ast) = "Block statement: " ++ (prettifyErrorMessage False $ printTree ast)
+  describeTraceItem r (ASTBlock _ ast) = "Block of code"
+  describeTraceItem r (ASTItem _ ast) = "Item definition: " ++ (prettifyErrorMessage False $ printTree ast)
+  describeTraceItem r (ASTExpr _ ast) = "Expression: " ++ (prettifyErrorMessage False $ printTree ast)
   describeTraceItem r _ = "Unknown AST part"
 
-describeError :: Program -> ASTNode -> String
-describeError r (ASTProgram ast) = printTree ast
-describeError r (ASTExpr ast) = printTree ast
-describeError r (ASTStmt p) = printTree p
-describeError r (ASTBlock p) = printTree p
-describeError r (ASTTopDef p) = printTree p
-describeError r (ASTTypeName p) = printTree p
-describeError r (ASTItem p) = printTree p
-describeError r (ASTNone) = "<none>"
+describeError :: Program ASTMetadata -> ASTNode ASTMetadata -> String
+describeError r (ASTProgram _ ast) = printTree ast
+describeError r (ASTExpr _ ast) = printTree ast
+describeError r (ASTStmt _ p) = printTree p
+describeError r (ASTBlock _ p) = printTree p
+describeError r (ASTTopDef _ p) = printTree p
+describeError r (ASTTypeName _ p) = printTree p
+describeError r (ASTItem _ p) = printTree p
+describeError r (ASTNone _) = "<none>"
 
 
-getPreface :: (SimplifiedExpr Program ASTNode) -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
+getPreface :: (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 getPreface p = do
   declareTypes [
     ("then", "'a -> 'b -> 'b"),
@@ -83,84 +83,84 @@ getPreface p = do
     ("==", "'a -> 'a -> Bool"),
     ("!=", "'a -> 'a -> Bool")] p
 
-simplifyProgram :: Program -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
-simplifyProgram (Program defs) = do
-  u <- valueOfType "Unit"
+simplifyProgram :: (Program ASTMetadata) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyProgram (Program _ defs) = do
+  u <- valueOfType "Void"
   p0 <- foldrM (\def acc -> simplifyTopDef def acc) (SimplifiedCall (SimplifiedVariable $ Ident "main") u) defs
   p <- getPreface p0
   --_ <- liftIO $ putStrLn $ show p
   return p
 
-simplifyTopDef :: TopDef -> (SimplifiedExpr Program ASTNode) -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
-simplifyTopDef ast@(FnDef retType name args body) expr = do
-  markTrace expr $ ASTTopDef ast
+simplifyTopDef :: TopDef ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyTopDef ast@(FnDef meta retType name args body) expr = do
+  markTrace expr $ ASTTopDef meta ast
   b <- simplifyBlock body expr
-  l <- createLambda (map (\(Arg typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
+  l <- createLambda (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
   tl <- return $ SimplifiedLet name l expr
   -- _ <- liftIO $ putStrLn $ show tl
   r <- addExprAnnot $ return tl
   unmarkTrace expr ast
   return r
 
-simplifyBlock :: Block -> (SimplifiedExpr Program ASTNode) -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
-simplifyBlock ast@(Block statements) expr = do
-  markTrace expr $ ASTBlock ast
-  u <- valueOfType "Unit"
+simplifyBlock :: Block ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyBlock ast@(Block meta statements) expr = do
+  markTrace expr $ ASTBlock meta ast
+  u <- valueOfType "Void"
   r <- foldrM (\stmt acc -> simplifyStatement acc stmt) u statements
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
 
-simplifyStatement :: (SimplifiedExpr Program ASTNode) -> Stmt -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
-simplifyStatement expr ast@(Decl typeName inits) = do
-  markTrace expr $ ASTStmt ast
+simplifyStatement :: (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Stmt ASTMetadata -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyStatement expr ast@(Decl meta typeName inits) = do
+  markTrace expr $ ASTStmt meta ast
   r <- foldM (simplifyStatementDecl typeName) expr inits
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
-simplifyStatement expr ast@(SExp stmtExpr) = do
-  markTrace expr $ ASTStmt ast
+simplifyStatement expr ast@(SExp meta stmtExpr) = do
+  markTrace expr $ ASTStmt meta ast
   e <- simplifyExpr stmtExpr expr
   r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) e) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
-simplifyStatement expr ast@VRet = do
-  markTrace expr $ ASTStmt ast
-  r <- valueOfType "Unit"
+simplifyStatement expr ast@(VRet meta) = do
+  markTrace expr $ ASTStmt meta ast
+  r <- valueOfType "Void"
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
-simplifyStatement expr ast@(Ret retExpr) = do
-  markTrace expr $ ASTStmt ast
+simplifyStatement expr ast@(Ret meta retExpr) = do
+  markTrace expr $ ASTStmt meta ast
   r <- simplifyExpr retExpr expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
 
-getTypeDefaultValue :: (AST r t) => TypeName -> (SimplifiedExpr r t)
-getTypeDefaultValue Int = SimplifiedConstInt 0
-getTypeDefaultValue Str = SimplifiedConstString ""
-getTypeDefaultValue Bool = SimplifiedConstBool False
+getTypeDefaultValue :: (AST r t) => TypeName ASTMetadata -> (SimplifiedExpr r t)
+getTypeDefaultValue (Int _) = SimplifiedConstInt 0
+getTypeDefaultValue (Str _) = SimplifiedConstString ""
+getTypeDefaultValue (Bool _) = SimplifiedConstBool False
 
-getTypeName :: TypeName -> String
-getTypeName Int = "Int"
-getTypeName Bool = "Bool"
-getTypeName Str = "String"
-getTypeName Void = "Unit"
+getTypeName :: TypeName ASTMetadata -> String
+getTypeName (Int _) = "Int"
+getTypeName (Bool _) = "Bool"
+getTypeName (Str _) = "String"
+getTypeName (Void _) = "Void"
 
-getTypeDefaultAnnot :: (AST r t) => TypeName -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
+getTypeDefaultAnnot :: (AST r t) => TypeName ASTMetadata -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 getTypeDefaultAnnot typeName e = checkType (getTypeName typeName) e
 
-simplifyStatementDecl :: TypeName -> (SimplifiedExpr Program ASTNode) -> Item -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
-simplifyStatementDecl typeName expr ast@(NoInit name) = do
-  markTrace expr $ ASTItem ast
+simplifyStatementDecl :: TypeName ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Item ASTMetadata -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyStatementDecl typeName expr ast@(NoInit meta name) = do
+  markTrace expr $ ASTItem meta ast
   r <- return $ SimplifiedLet name (getTypeDefaultValue typeName) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
-simplifyStatementDecl typeName expr ast@(Init name initExpr) = do
-  markTrace expr $ ASTItem ast
+simplifyStatementDecl typeName expr ast@(Init meta name initExpr) = do
+  markTrace expr $ ASTItem meta ast
   e <- simplifyExpr initExpr expr
   annotExp <- getTypeDefaultAnnot typeName e
   r <- return $ SimplifiedLet name annotExp expr
@@ -169,63 +169,63 @@ simplifyStatementDecl typeName expr ast@(Init name initExpr) = do
   return r
 
 
-getMulOpName :: MulOp -> String
-getMulOpName Times = "*"
-getMulOpName Div = "/"
-getMulOpName Mod = "%"
+getMulOpName :: MulOp ASTMetadata -> String
+getMulOpName (Times _) = "*"
+getMulOpName (Div _) = "/"
+getMulOpName (Mod _) = "%"
 
-getAddOpName :: AddOp -> String
-getAddOpName Plus = "+"
-getAddOpName Minus = "-"
+getAddOpName :: AddOp ASTMetadata -> String
+getAddOpName (Plus _) = "+"
+getAddOpName (Minus _) = "-"
 
-getRelOpName :: RelOp -> String
-getRelOpName LTH = "<"
-getRelOpName LE = "<="
-getRelOpName GTH = ">"
-getRelOpName GE = ">="
-getRelOpName EQU = "=="
-getRelOpName NE = "!="
+getRelOpName :: RelOp ASTMetadata -> String
+getRelOpName (LTH _) = "<"
+getRelOpName (LE _) = "<="
+getRelOpName (GTH _) = ">"
+getRelOpName (GE _) = ">="
+getRelOpName (EQU _) = "=="
+getRelOpName (NE _) = "!="
 
 getAppArgs :: (AST r t) => [(SimplifiedExpr r t)] -> Infer r t [(SimplifiedExpr r t)]
 getAppArgs [] = do
-  u <- valueOfType "Unit"
+  u <- valueOfType "Void"
   return [u]
 getAppArgs args = return args
 
-simplifyExpr :: Expr -> (SimplifiedExpr Program ASTNode) -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
+simplifyExpr :: Expr ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 simplifyExpr e expr = do
-  markTrace expr $ ASTExpr e
+  markTrace expr $ ASTExpr EmptyMetadata e
   r <- simplifyExpr_ e expr
   r <- addExprAnnot $ return r
   unmarkTrace expr e
   return r
 
 
-simplifyExpr_ :: Expr -> (SimplifiedExpr Program ASTNode) -> Infer Program ASTNode (SimplifiedExpr Program ASTNode)
-simplifyExpr_ (EVar name) _ = return $ SimplifiedVariable name
-simplifyExpr_ (ELitInt val) _ = return $ SimplifiedConstInt val
-simplifyExpr_ (EString val) _ = return $ SimplifiedConstString val
-simplifyExpr_ ELitTrue _ = return $ SimplifiedConstBool True
-simplifyExpr_ ELitFalse _ = return $ SimplifiedConstBool False
-simplifyExpr_ (Neg expr) e = do
+simplifyExpr_ :: Expr ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyExpr_ (EVar _ name) _ = return $ SimplifiedVariable name
+simplifyExpr_ (ELitInt _ val) _ = return $ SimplifiedConstInt val
+simplifyExpr_ (EString _ val) _ = return $ SimplifiedConstString val
+simplifyExpr_ (ELitTrue _) _ = return $ SimplifiedConstBool True
+simplifyExpr_ (ELitFalse _) _ = return $ SimplifiedConstBool False
+simplifyExpr_ (Neg _ expr) e = do
   e <- simplifyExpr expr e
   createNameCall "neg" [e]
-simplifyExpr_ (Not expr) e = do
+simplifyExpr_ (Not _ expr) e = do
   e <- simplifyExpr expr e
   createNameCall "not" [e]
-simplifyExpr_ (EMul expr1 op expr2) e = do
+simplifyExpr_ (EMul _ expr1 op expr2) e = do
   e1 <- simplifyExpr expr1 e
   e2 <- simplifyExpr expr2 e
   createNameCall (getMulOpName op) [e1, e2]
-simplifyExpr_ (ERel expr1 op expr2) e = do
+simplifyExpr_ (ERel _ expr1 op expr2) e = do
   e1 <- simplifyExpr expr1 e
   e2 <- simplifyExpr expr2 e
   createNameCall (getRelOpName op) [e1, e2]
-simplifyExpr_ (EAdd expr1 op expr2) e = do
+simplifyExpr_ (EAdd _ expr1 op expr2) e = do
   e1 <- simplifyExpr expr1 e
   e2 <- simplifyExpr expr2 e
   createNameCall (getAddOpName op) [e1, e2]
-simplifyExpr_ (EApp (Ident name) exprs) e = do
+simplifyExpr_ (EApp _ (Ident name) exprs) e = do
   exprsSimpl <- mapM (\expr -> simplifyExpr expr e) exprs
   args <- getAppArgs exprsSimpl
   createNameCall name args

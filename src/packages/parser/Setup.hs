@@ -5,7 +5,7 @@ customHook originalFn = do
     executeTasks $ do
         want ["parser/TestSyntax.hs"]
         ["parser/*.hs"] &%> \[ouths] -> do
-            executeCommandStack ["exec", "bnfc", "--", "-m", "-o", "_build/parser", ("grammar" </> "syntax.cf")] "."
+            executeCommandStack ["exec", "bnfc", "--", "-m", "-o", "_build/parser", "--functor", ("grammar" </> "syntax.cf")] "."
             executeCommand "sed" ["-i", "-e", "s/module Main where/module TestSyntax where/g", "_build/parser/TestSyntax.hs"] "."
             executeCommandStack ["exec", "happy", "--", "-gca", "ParSyntax.y"] "./_build/parser"
             executeCommandStack ["exec", "alex", "--", "-g", "LexSyntax.x"] "./_build/parser"

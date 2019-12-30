@@ -141,7 +141,7 @@ separator nonempty TypeArgEl "," ;
 TypeArgJust. TypeArg ::= "(" TypeArgEl "," [TypeArgEl] ")" ;
 TypeArgJustOne. TypeArg ::= TypeSimpleExpression ;
 
-TypeSExprEmpty. TypeSimpleExpression ::= "unit" ;
+TypeSExprEmpty. TypeSimpleExpression ::= "void" ;
 TypeSExprAbstract.    TypeSimpleExpression  ::= TypeIdentAbstract;
 TypeSExprIdent.       TypeSimpleExpression  ::= Ident ;
 TypeSExprList.        TypeSimpleExpression     ::= "[" TypeExpression "]" ;

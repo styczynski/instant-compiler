@@ -106,7 +106,7 @@ formatErrorDetails (r0,_) trace message errorText =  do
       in  return $ message
           ++ "\n   "
           ++ traceContextGlobalString
-          ++ "   "
+          ++ "\n   "
           ++ pointerText
           ++ "\n    "
           ++ errorText

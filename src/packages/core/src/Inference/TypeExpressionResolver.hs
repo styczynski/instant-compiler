@@ -40,32 +40,32 @@ import qualified Data.Set                      as Set
 -- | Extracts free variables from type expression and assigns them to fresh
 --   type variables.
 getTypeSimpleExpressionFV
-  :: (AST r t) => TypeSimpleExpression -> Infer r t (Map.Map String TypeVar)
-getTypeSimpleExpressionFV (TypeSExprList listType) =
+  :: (AST r t) => TypeSimpleExpression ASTMetadata -> Infer r t (Map.Map String TypeVar)
+getTypeSimpleExpressionFV (TypeSExprList _ listType) =
   getTypeExpressionFV listType
-getTypeSimpleExpressionFV (TypeSExprIdent _) = return Map.empty
-getTypeSimpleExpressionFV TypeSExprEmpty = return Map.empty
-getTypeSimpleExpressionFV (TypeSExprAbstract (TypeIdentAbstract name)) = do
+getTypeSimpleExpressionFV (TypeSExprIdent _ _) = return Map.empty
+getTypeSimpleExpressionFV (TypeSExprEmpty _) = return Map.empty
+getTypeSimpleExpressionFV (TypeSExprAbstract _ (TypeIdentAbstract name)) = do
   tvv <- freshTypeVar
   return $ let (TypeVar tv) = tvv in Map.singleton name tv
 
-getTypeExpressionFV :: (AST r t) => TypeExpression -> Infer r t (Map.Map String TypeVar)
-getTypeExpressionFV (TypeExprSimple simpl) = getTypeSimpleExpressionFV simpl
-getTypeExpressionFV (TypeExprIdent (TypeArgJustOne param) _) =
+getTypeExpressionFV :: (AST r t) => TypeExpression ASTMetadata -> Infer r t (Map.Map String TypeVar)
+getTypeExpressionFV (TypeExprSimple _ simpl) = getTypeSimpleExpressionFV simpl
+getTypeExpressionFV (TypeExprIdent _ (TypeArgJustOne _ param) _) =
   getTypeSimpleExpressionFV param
-getTypeExpressionFV (TypeExprIdent (TypeArgJust firstParam restParams) _) = do
+getTypeExpressionFV (TypeExprIdent _ (TypeArgJust _ firstParam restParams) _) = do
   foldlM
-    (\acc (TypeArgEl el) -> do
+    (\acc (TypeArgEl _ el) -> do
       r <- getTypeExpressionFV el
       return $ acc `Map.union` r
     )
     Map.empty
     ([firstParam] ++ restParams)
-getTypeExpressionFV (TypeFun a b) = do
+getTypeExpressionFV (TypeFun _ a b) = do
   t1 <- (getTypeExpressionFV a)
   t2 <- (getTypeExpressionFV b)
   return $ t1 `Map.union` t2
-getTypeExpressionFV (TypeExprTuple fstEl restEls) = foldlM
+getTypeExpressionFV (TypeExprTuple _ fstEl restEls) = foldlM
   (\acc el -> do
     t <- (getTypeExpressionFV el)
     return $ acc `Map.union` t
@@ -75,30 +75,30 @@ getTypeExpressionFV (TypeExprTuple fstEl restEls) = foldlM
 getTypeExpressionFV _ = return Map.empty
 
 -- | Extracts free variables from type expression
-instance (AST r t) => WithFreedomM TypeSimpleExpression String (Infer r t) where
-  freeDimensionsM TypeSExprEmpty       = return $ Set.empty
-  freeDimensionsM (TypeSExprList expr) = freeDimensionsM expr
-  freeDimensionsM (TypeSExprAbstract (TypeIdentAbstract name)) =
+instance (AST r t) => WithFreedomM (TypeSimpleExpression ASTMetadata) String (Infer r t) where
+  freeDimensionsM (TypeSExprEmpty _)      = return $ Set.empty
+  freeDimensionsM (TypeSExprList _ expr) = freeDimensionsM expr
+  freeDimensionsM (TypeSExprAbstract _ (TypeIdentAbstract name)) =
     return $ Set.singleton name
-  freeDimensionsM (TypeSExprIdent _) = return $ Set.empty
+  freeDimensionsM (TypeSExprIdent _ _) = return $ Set.empty
 
-instance (AST r t) => WithFreedomM TypeExpression String (Infer r t) where
-  freeDimensionsM (TypeExprSimple simpl) = freeDimensionsM simpl
-  freeDimensionsM (TypeExprIdent (TypeArgJustOne simpl) _) =
+instance (AST r t) => WithFreedomM (TypeExpression ASTMetadata) String (Infer r t) where
+  freeDimensionsM (TypeExprSimple _ simpl) = freeDimensionsM simpl
+  freeDimensionsM (TypeExprIdent _ (TypeArgJustOne _ simpl) _) =
     freeDimensionsM simpl
-  freeDimensionsM (TypeExprIdent (TypeArgJust firstParam restParams) _) = do
+  freeDimensionsM (TypeExprIdent _ (TypeArgJust _ firstParam restParams) _) = do
     foldlM
-      (\acc (TypeArgEl el) -> do
+      (\acc (TypeArgEl _ el) -> do
         r <- freeDimensionsM el
         return $ acc `Set.union` r
       )
       Set.empty
       ([firstParam] ++ restParams)
-  freeDimensionsM (TypeFun a b) = do
+  freeDimensionsM (TypeFun _ a b) = do
     x <- freeDimensionsM a
     y <- freeDimensionsM b
     return $ x `Set.union` y
-  freeDimensionsM (TypeExprTuple firstElem restElems) = do
+  freeDimensionsM (TypeExprTuple _ firstElem restElems) = do
     x <- freeDimensionsM firstElem
     foldrM
       (\el acc -> do
@@ -109,14 +109,14 @@ instance (AST r t) => WithFreedomM TypeExpression String (Infer r t) where
       restElems
 
 resolveTypeSimpleExpressionRec
-  :: (AST r t) => (Map.Map String TypeVar) -> TypeSimpleExpression -> Infer r t Type
-resolveTypeSimpleExpressionRec fvs TypeSExprEmpty = return TypeUnit
-resolveTypeSimpleExpressionRec fvs (TypeSExprIdent (Ident name)) =
+  :: (AST r t) => (Map.Map String TypeVar) -> TypeSimpleExpression ASTMetadata -> Infer r t Type
+resolveTypeSimpleExpressionRec fvs (TypeSExprEmpty _) = return TypeUnit
+resolveTypeSimpleExpressionRec fvs (TypeSExprIdent _ (Ident name)) =
   return $ TypeStatic name
-resolveTypeSimpleExpressionRec fvs (TypeSExprList expr) = do
+resolveTypeSimpleExpressionRec fvs (TypeSExprList _ expr) = do
   t <- resolveTypeExpressionRec fvs expr
   return $ TypeList t
-resolveTypeSimpleExpressionRec fvs (TypeSExprAbstract (TypeIdentAbstract name))
+resolveTypeSimpleExpressionRec fvs (TypeSExprAbstract _ (TypeIdentAbstract name))
   = do
     parsedName <- return $ [ x | x <- name, not (x `elem` "'") ]
     validFvs   <- return $ name `Map.member` fvs
@@ -131,28 +131,28 @@ resolveTypeSimpleExpressionRec fvs (TypeSExprAbstract (TypeIdentAbstract name))
       else let (Just tv) = Map.lookup name fvs in return $ TypeVar tv
 
 resolveTypeExpressionRec
-  :: (AST r t) => (Map.Map String TypeVar) -> TypeExpression -> Infer r t Type
-resolveTypeExpressionRec fvs (TypeExprSimple simpl) =
+  :: (AST r t) => (Map.Map String TypeVar) -> TypeExpression ASTMetadata -> Infer r t Type
+resolveTypeExpressionRec fvs (TypeExprSimple _ simpl) =
   resolveTypeSimpleExpressionRec fvs simpl
-resolveTypeExpressionRec fvs (TypeExprIdent (TypeArgJust firstParam restParams) (Ident name))
+resolveTypeExpressionRec fvs (TypeExprIdent _ (TypeArgJust _ firstParam restParams) (Ident name))
   = do
     typeParams <- foldlM
-      (\acc (TypeArgEl expr) -> do
+      (\acc (TypeArgEl _ expr) -> do
         t <- resolveTypeExpressionRec fvs expr
         return $ [t] ++ acc
       )
       ([])
       ([firstParam] ++ restParams)
     return $ TypeComplex name typeParams
-resolveTypeExpressionRec fvs (TypeExprIdent (TypeArgJustOne param) (Ident name))
+resolveTypeExpressionRec fvs (TypeExprIdent _ (TypeArgJustOne _ param) (Ident name))
   = do
     typeParam <- resolveTypeSimpleExpressionRec fvs param
     return $ TypeComplex name [typeParam]
-resolveTypeExpressionRec fvs (TypeFun a b) = do
+resolveTypeExpressionRec fvs (TypeFun _ a b) = do
   t1 <- resolveTypeExpressionRec fvs a
   t2 <- resolveTypeExpressionRec fvs b
   return $ TypeArrow t1 t2
-resolveTypeExpressionRec fvs (TypeExprTuple fstEl restEls) = do
+resolveTypeExpressionRec fvs (TypeExprTuple _ fstEl restEls) = do
   tupleT <- foldlM
     (\acc expr -> do
       t <- resolveTypeExpressionRec fvs expr
@@ -163,7 +163,7 @@ resolveTypeExpressionRec fvs (TypeExprTuple fstEl restEls) = do
   return tupleT
 
 -- | Entrypoint to resolve type expression
-resolveTypeExpression :: (AST r t) => TypeExpression -> Infer r t Scheme
+resolveTypeExpression :: (AST r t) => TypeExpression ASTMetadata -> Infer r t Scheme
 resolveTypeExpression exp = do
   fvs  <- getTypeExpressionFV exp
   t    <- resolveTypeExpressionRec fvs exp
@@ -173,9 +173,13 @@ resolveTypeExpression exp = do
 -- | Parse type string with environment
 parseTypeExpression
   :: (AST r t) =>  String
-  -> Infer r t  Scheme
+  -> Infer r t Scheme
 parseTypeExpression typeExpr =
   let ts = myLexer typeExpr
   in
     case pTypeExpression ts of
-      Ok tree -> resolveTypeExpression tree
+      Ok tree -> resolveTypeExpression $ fmap (\_ -> EmptyMetadata) tree
+      Bad t -> do
+        _ <- liftIO $ liftIO $ liftIO $ putStrLn $ typeExpr
+        _ <- liftIO $ liftIO $ liftIO $ putStrLn $ show t
+        return $ Scheme [] TypeUnit

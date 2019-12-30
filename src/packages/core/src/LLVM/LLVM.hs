@@ -23,13 +23,13 @@ import Inference.Syntax
 import Analyzer.Analyzer
 import Lib
 
-instance Analyzable Program ASTNode where
-  emptyPayload = ASTNone
+instance Analyzable (Program ASTMetadata) (ASTNode ASTMetadata) where
+  emptyPayload = ASTNone EmptyMetadata
 
-instance Compilable Program ASTNode where
+instance Compilable (Program ASTMetadata) (ASTNode ASTMetadata) where
   parse (_, t0) source = let ts = myLexer source in case pProgram ts of
     Bad e -> Left $ FailedParse $ show source
-    Ok r -> Right (r, t0)
+    Ok r -> Right (fmap (\_ -> EmptyMetadata) r, t0)
 
 
 data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
@@ -92,16 +92,16 @@ generateAssignVarName False name = do
   env <- ask
   return (name, env)
 
-defaultCompilerLLVM :: Compiler Program ASTNode
+defaultCompilerLLVM :: Compiler (Program ASTMetadata) (ASTNode ASTMetadata)
 defaultCompilerLLVM p = compilerLLVM defaultLLVMCompilerConfiguration p
 
-compile :: Program -> Exec ([LInstruction], Environment)
-compile (Program statements) = do
+compile :: (Program ASTMetadata) -> Exec ([LInstruction], Environment)
+compile (Program _ statements) = do
   env <- ask
   return ([], env)
 
-compilerLLVM :: LLVMCompilerConfiguration -> Compiler Program ASTNode
-compilerLLVM opts (program@(Program statements), _) = do
+compilerLLVM :: LLVMCompilerConfiguration -> Compiler (Program ASTMetadata) (ASTNode ASTMetadata)
+compilerLLVM opts (program@(Program _ statements), _) = do
   _ <- liftIO $ putStrLn "Compile Instant code..."
   header <- return $ [r|declare void @printInt(i32)
        define i32 @main() {

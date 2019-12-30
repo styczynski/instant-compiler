@@ -45,6 +45,9 @@ class (Show t, Show r) => AST r t | r -> t where
   describeTraceItem :: r -> t -> String
   simplify :: r -> Infer r t (SimplifiedExpr r t)
 
+-- | Payload for AST nodes
+data ASTMetadata = EmptyMetadata deriving (Show, Eq)
+
 -- | Payload for typechecking errors
 data TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show, Eq)
 

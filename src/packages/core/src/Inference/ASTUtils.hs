@@ -37,7 +37,7 @@ createNameCall :: (AST r t) => String -> [(SimplifiedExpr r t)] -> Infer r t (Si
 createNameCall name args = createCall (SimplifiedVariable $ Ident name) args
 
 getLambdaArgs :: [(String, String)] -> [String]
-getLambdaArgs [] = ["Unit"]
+getLambdaArgs [] = ["Void"]
 getLambdaArgs args = map fst args
 
 getLambdaArgsNames :: [(String, String)] -> [String]

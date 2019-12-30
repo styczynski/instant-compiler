@@ -15,16 +15,16 @@ import Compiler.Compiler
 import LLVM.LLVM
 import Syntax.Base
 
-compilerInit :: (Program, ASTNode)
-compilerInit = (Program [], ASTNone)
+compilerInit :: (Program ASTMetadata, ASTNode ASTMetadata)
+compilerInit = (Program EmptyMetadata [], ASTNone EmptyMetadata)
 
-runFile :: Compiler Program ASTNode -> Verbosity -> FilePath -> IO ()
+runFile :: Compiler (Program ASTMetadata) (ASTNode ASTMetadata) -> Verbosity -> FilePath -> IO ()
 runFile compiler v f = putStrLn f >> readFile f >>= runBlockI compiler v
 
 callCompiler :: LLVMCompilerConfiguration -> Verbosity -> String -> IO String
 callCompiler opt v = runBlockC (compilerLLVM opt) v
 
-runBlockC :: Compiler Program ASTNode -> Verbosity -> String -> IO String
+runBlockC :: Compiler (Program ASTMetadata) (ASTNode ASTMetadata) -> Verbosity -> String -> IO String
 runBlockC compiler v s = do
   initEnv0 <- runInitEmpty compilerInit
   result <- runWith compilerInit compiler v s initEnv0
@@ -37,7 +37,7 @@ runBlockC compiler v s = do
                     exitFailure
      Compiled out env -> return out
 
-runBlockI :: Compiler Program ASTNode -> Verbosity -> String -> IO ()
+runBlockI :: Compiler (Program ASTMetadata) (ASTNode ASTMetadata) -> Verbosity -> String -> IO ()
 runBlockI compiler v s = do
   initEnv0 <- runInitEmpty compilerInit
   result <- runWith compilerInit compiler v s initEnv0

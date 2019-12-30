@@ -116,24 +116,24 @@ inferProgram ast = do
 
 -- | Creates abstract type constructor for given name and parameters
 createTypeExpressionAbstractArgConstructor
-  :: Ident -> [String] -> TypeExpression
+  :: Ident -> [String] -> TypeExpression ASTMetadata
 createTypeExpressionAbstractArgConstructor typeName [] =
-  TypeExprSimple $ TypeSExprIdent $ typeName
+  TypeExprSimple EmptyMetadata $ TypeSExprIdent EmptyMetadata typeName
 createTypeExpressionAbstractArgConstructor typeName names@(hNames : tNames) =
   let
     (identHead : identTail) = map
       (\e ->
-        TypeArgEl $ TypeExprSimple $ TypeSExprAbstract $ TypeIdentAbstract $ e
+        TypeArgEl EmptyMetadata $ TypeExprSimple EmptyMetadata $ TypeSExprAbstract EmptyMetadata $ TypeIdentAbstract e
       )
       names
-  in  TypeExprIdent (TypeArgJust identHead identTail) typeName
+  in  TypeExprIdent EmptyMetadata (TypeArgJust EmptyMetadata identHead identTail) typeName
 
 -- | Transforms AST type param to list of parameters' names
-typeParamsToList :: TypeParam -> [String]
-typeParamsToList TypeParamNone = []
-typeParamsToList (TypeParamJust names) =
+typeParamsToList :: TypeParam ASTMetadata -> [String]
+typeParamsToList (TypeParamNone _) = []
+typeParamsToList (TypeParamJust _ names) =
   map (\(TypeIdentAbstract name) -> name) names
-typeParamsToList (TypeParamJustOne (TypeIdentAbstract name)) = [name]
+typeParamsToList (TypeParamJustOne _ (TypeIdentAbstract name)) = [name]
 
 ------------------------------------------------------------------
 --        Inference for various types of AST nodes              --
@@ -152,7 +152,7 @@ inferE expr = do
   return $ TypeConstraint p (type1, type2)
 
 infer :: (AST r t) => SimplifiedExpr r t -> Infer r t (Type, [TypeConstraint r t])
-infer SimplifiedSkip            = return ((TypeStatic "Int"), [])
+infer SimplifiedSkip            = return ((TypeStatic "Void"), [])
 infer (SimplifiedConstInt    _) = return ((TypeStatic "Int"), [])
 infer (SimplifiedConstBool   _) = return ((TypeStatic "Bool"), [])
 infer (SimplifiedConstString _) = return ((TypeStatic "String"), [])
@@ -240,7 +240,7 @@ infer (SimplifiedIf cond tr fl) = do
   (type1, constraintype1) <- infer cond
   (type2, constraintype2) <- infer tr
   (type3, constraint3) <- infer fl
-  bindExpr1     <- type1 <.> (TypeStatic "Bool")
+  bindExpr1     <- type1 <.> (TypeStatic "bool")
   bindExpr2     <- (type2 <.> type3)
   ac       <- constraintAnnoTypeList [bindExpr1, bindExpr2]
   return (type2, constraintype1 ++ constraintype2 ++ constraint3 ++ ac)

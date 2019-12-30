@@ -100,49 +100,67 @@ isNotPlaceholder (TypeVar _) = False
 isNotPlaceholder _           = True
 
 -- | Helper to print types in readable format
-typeToStrRec :: [TypeVar] -> Type -> String
-typeToStrRec vars TypeUnit = "()"
-typeToStrRec vars (TypeAnnotated (AnnotationEnv v)) =
+typeToStrRec :: [TypeVar] -> Type -> [Type] -> String
+typeToStrRec vars TypeUnit funArgs = "Void"
+typeToStrRec vars (TypeAnnotated (AnnotationEnv v)) funArgs =
   "export{" ++ (show v) ++ "}"
-typeToStrRec vars (TypeList t) = "[" ++ (typeToStrRec vars t) ++ "]"
-typeToStrRec vars (TypeArrow a b) =
-  "(" ++ (typeToStrRec vars a) ++ ") -> " ++ (typeToStrRec vars b)
-typeToStrRec vars (TypeVar    (TV name)) = name
-typeToStrRec vars (TypeStatic name     ) = name
-typeToStrRec vars (TypePoly alternatives) =
+typeToStrRec vars (TypeList t) funArgs = "[" ++ (typeToStrRec vars t []) ++ "]"
+
+--typeToStrRec vars (TypeArrow a b) funArgs =
+--  "(" ++ (typeToStrRec vars a []) ++ ") -> " ++ (typeToStrRec vars b [])
+
+typeToStrRec vars (TypeArrow a (TypeArrow b c)) funArgs =
+  typeToStrRec vars (TypeArrow b c) (funArgs ++ [a])
+
+typeToStrRec vars (TypeArrow a retType) funArgs =
+  "("
+      ++ (foldr
+           (\el acc ->
+             acc
+               ++ (if length acc <= 0 then "" else ", ")
+               ++ (typeToStrRec vars el [])
+           )
+           ""
+           ([a] ++ funArgs)
+         )
+      ++ "): " ++ (typeToStrRec vars retType [])
+
+typeToStrRec vars (TypeVar    (TV name)) funArgs = name
+typeToStrRec vars (TypeStatic name     ) funArgs = name
+typeToStrRec vars (TypePoly alternatives) funArgs =
   "[< "
     ++ (foldr
          (\el acc ->
            acc
              ++ (if length acc <= 0 then "" else "| ")
-             ++ (typeToStrRec vars el)
+             ++ (typeToStrRec vars el [])
          )
          ""
          (filter isNotPlaceholder alternatives)
        )
     ++ "]"
-typeToStrRec vars (TypeComplex name deps) =
+typeToStrRec vars (TypeComplex name deps) funArgs =
   name
     ++ " ("
     ++ (foldr
          (\el acc ->
            acc
              ++ (if length acc <= 0 then "" else ", ")
-             ++ (typeToStrRec vars el)
+             ++ (typeToStrRec vars el [])
          )
          ""
          deps
        )
     ++ ")"
-typeToStrRec vars (TypeTuple TypeUnit TypeUnit) = "()"
-typeToStrRec vars (TypeTuple a (TypeTuple TypeUnit TypeUnit)) =
-  typeToStrRec vars a
-typeToStrRec vars (TypeTuple a b) =
-  (typeToStrRec vars a) ++ " * " ++ (typeToStrRec vars b)
+typeToStrRec vars (TypeTuple TypeUnit TypeUnit) funArgs = "()"
+typeToStrRec vars (TypeTuple a (TypeTuple TypeUnit TypeUnit)) funArgs =
+  typeToStrRec vars a []
+typeToStrRec vars (TypeTuple a b) funArgs =
+  (typeToStrRec vars a []) ++ " * " ++ (typeToStrRec vars b [])
 
 -- | Print readable text representation for type
 typeToStr :: [TypeVar] -> Type -> String
-typeToStr l t = typeToStrRec l $ remapTypes t
+typeToStr l t = typeToStrRec l (remapTypes t) []
 
 -- | Print readable text representation for type schema
 schemeToStr :: Scheme -> String
