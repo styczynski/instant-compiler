@@ -39,6 +39,7 @@ dependencies:
 - blaze-markup >= 0.8.2.3
 - utf8-string >= 1.0.1.1
 - filepath >= 1.4.2.1
+- fuzzy >= 0.1.0.0
 - instant-core
 - instant-parser
 

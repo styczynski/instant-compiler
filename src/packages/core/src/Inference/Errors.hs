@@ -18,7 +18,9 @@ import           Inference.Syntax
 import           Inference.TypingEnvironment
 import           Inference.Types
 
+import qualified Data.Map                      as Map
 import           Data.Text.Internal.Search
+import qualified          Text.Fuzzy as Fuzzy
 import qualified Data.Text                     as T
 import Data.List
 import Data.Char (isSpace)
@@ -63,6 +65,14 @@ prettifyErrorMessage :: Bool -> String -> String
 prettifyErrorMessage oneLine str =
   foldl (\acc el -> if (length acc > 0) then acc ++ "\n     |        " ++ el else el) "" $ filter (not . null) $ lines $ if oneLine then intercalate " " $ lines str else str
 
+unwrapMaybe :: Maybe t -> t
+unwrapMaybe (Just a) = a
+
+getMostSimilarTypeNames :: TypeEnvironment -> String -> [(String, Scheme)]
+getMostSimilarTypeNames typeEnv name =
+  map (\f -> (Fuzzy.rendered f, (unwrapMaybe $ Map.lookup (Ident $ Fuzzy.original f) (types typeEnv))) ) $ Fuzzy.filter name (map (\(Ident name) -> name) $ Map.keys $ types typeEnv) "" "" (\t -> t) False
+
+
 -- | Translates typing error into readable string
 typeErrorToStr :: (AST r t) => (r,t) -> TypeError r t -> IO String
 typeErrorToStr s0 (UnificationFail payl a b) =
@@ -79,8 +89,11 @@ typeErrorToStr s0 (UnificationMismatch payl a b) =
 typeErrorToStr s0 (Ambigious payl a) =
   formatErrorDetails s0 (mapErrors s0 payl) "Types cannot be determined." $ "Cannot infer types, expression is ambigious: "
     ++ (constraintsListToStr a)
-typeErrorToStr s0 (UnboundVariable payl (Ident a)) =
-  formatErrorDetails s0 (mapErrors s0 payl) "Invalid identifier was used." $  "Variable not in scope: \"" ++ a ++ "\""
+typeErrorToStr s0 (UnboundVariable payl (Ident a) typeEnv) = do
+  suggestions <- return $ getMostSimilarTypeNames typeEnv a
+  suggestionsText <- return $ foldr (\(name, scheme) acc -> let elText = "      - Variable: " ++ name ++ " of type " ++ (schemeToStr scheme) in if (length acc) == 0 then elText else acc ++ "\n" ++ elText ) "" (take 3 suggestions)
+  suggestionsText <- return $ if (length suggestionsText) == 0 then "      No suggestions to display." else suggestionsText
+  formatErrorDetails s0 (mapErrors s0 payl) "Invalid identifier was used." $  "Variable not in scope: \"" ++ a ++ "\"\n     Maybe you made a typo? Suggested alternatives are:\n" ++ suggestionsText ++ "\n"
 typeErrorToStr s0 (InfiniteType payl (TV v) t) =
   formatErrorDetails s0 (mapErrors s0 payl) "Invalid type was specified." $ "Infinite type detected: "
     ++ v

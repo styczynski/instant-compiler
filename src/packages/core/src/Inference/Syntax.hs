@@ -44,9 +44,7 @@ class (Show t, Show r) => AST r t | r -> t where
   describeErrors :: r -> [t] -> String
   describeTraceItem :: r -> t -> String
   simplify :: r -> Infer r t (SimplifiedExpr r t)
-
--- | Payload for AST nodes
-data ASTMetadata = EmptyMetadata deriving (Show, Eq)
+  describeErrorPosition :: r -> [t] -> (Int, Int, Int)
 
 -- | Payload for typechecking errors
 data TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show, Eq)
@@ -63,13 +61,13 @@ data (AST r t) => InferState r t = InferState {
   tagMap :: Map.Map String Int,
   inferTrace :: [TypeErrorPayload t],
   root :: r
-}
+} deriving (Show)
 
 -- | Base typechecking errors
 data (AST r t) => TypeError r t
   = UnificationFail [TypeErrorPayload t] Type Type
   | InfiniteType [TypeErrorPayload t] TypeVar Type
-  | UnboundVariable [TypeErrorPayload t] Ident
+  | UnboundVariable [TypeErrorPayload t] Ident TypeEnvironment
   | Ambigious [TypeErrorPayload t] [TypeConstraint r t]
   | UnificationMismatch [TypeErrorPayload t] [Type] [Type]
   | Debug [TypeErrorPayload t] String

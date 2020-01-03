@@ -44,6 +44,9 @@ getLambdaArgsNames :: [(String, String)] -> [String]
 getLambdaArgsNames [] = ["__nothing__"]
 getLambdaArgsNames args = map snd args
 
+getSignature :: [(String, String)] -> String -> String
+getSignature args retType = intercalate " -> " $ getLambdaArgs args ++ [retType]
+
 createLambda :: (AST r t) => [(String, String)] -> String -> (SimplifiedExpr r t) -> Infer r t (SimplifiedExpr r t)
 createLambda args retType body = do
   lambda <- createUntypedLambda (getLambdaArgsNames args) body

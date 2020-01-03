@@ -83,7 +83,7 @@ lookupEnv name = do
   case (env ?? name) of
     Nothing -> do
       payl <- errPayload
-      throwError $ UnboundVariable payl name
+      throwError $ UnboundVariable payl name env
     (Just (Scheme vars typeScheme)) -> do
       varsMapped <- mapM (const freshTypeVar) vars
       return $ (Subst $ Map.fromList $ zip vars varsMapped) .> typeScheme

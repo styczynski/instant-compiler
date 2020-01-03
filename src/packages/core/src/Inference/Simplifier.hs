@@ -46,6 +46,7 @@ import qualified Data.Set                      as Set
 instance AST (Program ASTMetadata) (ASTNode ASTMetadata) where
   getEmptyPayload _ = ASTNone EmptyMetadata
   simplify p = simplifyProgram p
+  describeErrorPosition r p = (0, 0, 0)
   describeErrors r payl = intercalate "" $ map (\p -> describeError r p) payl
   describeTraceItem r (ASTProgram _ ast) = "Program entry"
   describeTraceItem r (ASTTopDef _ ast@(FnDef meta typ (Ident name) arg _)) = "Top definition for \"" ++ name ++ "\": " ++ (prettifyErrorMessage True $ printTree $ FnDef meta typ (Ident name) arg (Block EmptyMetadata []))
@@ -90,12 +91,30 @@ getPreface p = do
     ("!=", "'a -> 'a -> Bool")] p
 
 simplifyProgram :: (Program ASTMetadata) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
-simplifyProgram (Program _ defs) = do
+simplifyProgram ast@(Program _ defs) = do
   u <- valueOfType "Void"
+  globalDefs <- extractGlobalDefs ast
   p0 <- foldrM (\def acc -> simplifyTopDef def acc) (SimplifiedCall (SimplifiedVariable $ Ident "main") u) defs
+  p0 <- simplifyGlobalDefs globalDefs p0
   p <- getPreface p0
   --_ <- liftIO $ putStrLn $ show p
   return p
+
+getFunSignature :: (TypeName ASTMetadata) -> Ident -> [Arg ASTMetadata] -> String
+getFunSignature retType name args =
+  getSignature (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType)
+
+simplifyGlobalDefs :: (Map.Map Ident String) -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata)  (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyGlobalDefs globalDefs expr = do
+  foldM (\acc (name, sig) -> do
+    v <- valueOfType sig
+    return $ SimplifiedLet name v acc) expr (Map.toList globalDefs)
+
+extractGlobalDefs :: (Program ASTMetadata) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (Map.Map Ident String)
+extractGlobalDefs (Program _ defs) = do
+  return $ foldr (\def acc -> case def of
+    (FnDef _ retType name args _) -> Map.insert name (getFunSignature retType name args) acc
+    _ -> acc) Map.empty defs
 
 simplifyTopDef :: TopDef ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 simplifyTopDef ast@(FnDef meta retType name args body) expr = do
