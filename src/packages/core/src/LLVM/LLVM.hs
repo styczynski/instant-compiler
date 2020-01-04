@@ -6,6 +6,8 @@
 module LLVM.LLVM where
 import Text.RawString.QQ
 
+import X86.Examples
+
 import Compiler.Compiler
 import Syntax.Base
 import LLVM.Assembly
@@ -113,5 +115,7 @@ compilerLLVM opts (program@(Program _ statements), _) = do
   (compiledProgram, env) <- compile program
   (insContent, _) <- return $ llvmInstructions "       " compiledProgram
   content <- return $ header ++ insContent ++ footer
-  _ <- liftIO $ runCompilationTools opts content
+  _ <- liftIO $ putStrLn $ "Test generator: "
+  _ <- liftIO $ putStrLn $ testx86
+  --_ <- liftIO $ runCompilationTools opts content
   local (\_ -> env) $ postCompile opts
