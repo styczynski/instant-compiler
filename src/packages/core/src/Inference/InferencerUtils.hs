@@ -48,9 +48,7 @@ addExprAnnot inExpr = do
 markTrace :: (AST r t) => (SimplifiedExpr r t) -> t -> Infer r t ()
 markTrace expr a = do
   s          <- get
-  inferTrace <-
-    return $ let InferState { inferTrace = inferTrace } = s in inferTrace
-  put s { inferTrace = (inferTrace ++ [ TypeErrorPayload a ]) }
+  put s { inferTrace = (inferTrace s) ++ [ TypeErrorPayload a ] }
   return ()
 
 -- | Removes inference trace node (for debugging purposes)
@@ -58,9 +56,7 @@ markTrace expr a = do
 unmarkTrace :: (AST r t, Show a, Print a) => (SimplifiedExpr r t) -> a -> Infer r t ()
 unmarkTrace _ a = do
   s          <- get
-  inferTrace <-
-    return $ let InferState { inferTrace = inferTrace } = s in inferTrace
-  put s { inferTrace = (inferTrace ++ [ EmptyPayload ]) }
+  put s { inferTrace = (inferTrace s) ++ [ EmptyPayload ] }
   return ()
 --  s        <- get
 --  newTrace <-

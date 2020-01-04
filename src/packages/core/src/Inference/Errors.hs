@@ -77,9 +77,9 @@ getMostSimilarTypeNames typeEnv name =
 typeErrorToStr :: (AST r t) => (r,t) -> TypeError r t -> IO String
 typeErrorToStr s0 (UnificationFail payl a b) =
     formatErrorDetails s0 (mapErrors s0 payl) "Mismatched types." $ "Cannot match types, expected: "
-    ++ (typeToStr [] a)
-    ++ ", got: "
     ++ (typeToStr [] b)
+    ++ ", got: "
+    ++ (typeToStr [] a)
 typeErrorToStr s0 (Debug payl mes) = formatErrorDetails s0 (mapErrors s0 payl) "Debug message." $ mes
 typeErrorToStr s0 (UnificationMismatch payl a b) =
   formatErrorDetails s0 (mapErrors s0 payl) "Mismatched types." $ "Cannot match types, mismatch when unyfying: "
