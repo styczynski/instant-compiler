@@ -12,7 +12,7 @@ import Inference.Syntax
 
 import Lib
 import Compiler.Compiler
-import LLVM.LLVM
+import SSA.Compiler
 import Syntax.Base
 
 compilerInit :: (Program ASTMetadata, ASTNode ASTMetadata)
@@ -21,8 +21,8 @@ compilerInit = (Program EmptyMetadata [], ASTNone EmptyMetadata)
 runFile :: Compiler (Program ASTMetadata) (ASTNode ASTMetadata) -> Verbosity -> FilePath -> IO ()
 runFile compiler v f = putStrLn f >> readFile f >>= runBlockI compiler v
 
-callCompiler :: LLVMCompilerConfiguration -> Verbosity -> String -> IO String
-callCompiler opt v = runBlockC (compilerLLVM opt) v
+callCompiler :: SSACompilerConfiguration -> Verbosity -> String -> IO String
+callCompiler opt v = runBlockC (compilerSSA opt) v
 
 runBlockC :: Compiler (Program ASTMetadata) (ASTNode ASTMetadata) -> Verbosity -> String -> IO String
 runBlockC compiler v s = do
@@ -71,13 +71,13 @@ parseMainArgs = MainArgs
      long "run" <>
      help "Run program after compilation")
 
-compilerConf :: (Maybe String) -> Bool -> LLVMCompilerConfiguration
+compilerConf :: (Maybe String) -> Bool -> SSACompilerConfiguration
 compilerConf inputFile shouldRun = case inputFile of
-  Nothing -> defaultLLVMCompilerConfiguration { llvmRunProgram = shouldRun }
-  (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = (takeBaseName path), llvmOutputPath = (takeDirectory path), llvmRunProgram = shouldRun }
+  Nothing -> defaultSSACompilerConfiguration { ssaRunProgram = shouldRun }
+  (Just path) -> defaultSSACompilerConfiguration { ssaProgramName = (takeBaseName path), ssaOutputPath = (takeDirectory path), ssaRunProgram = shouldRun }
 
 mainEntry :: MainArgs -> IO ()
 mainEntry (MainArgs file verbosity shouldRun) = case (verbosity, file, shouldRun) of
-  (v, "stdin", shouldRun) -> execContents (compilerLLVM $ compilerConf Nothing shouldRun) v
-  (v, src, shouldRun) -> runFile (compilerLLVM $ compilerConf (Just src) shouldRun) v src
+  (v, "stdin", shouldRun) -> execContents (compilerSSA $ compilerConf Nothing shouldRun) v
+  (v, src, shouldRun) -> runFile (compilerSSA $ compilerConf (Just src) shouldRun) v src
 mainEntry _ = return ()

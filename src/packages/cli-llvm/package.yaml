@@ -42,6 +42,8 @@ dependencies:
 - fuzzy >= 0.1.0.0
 - tardis >= 0.4.1.0
 - vector >= 0.12.0.3
+- ghc >= 8.6.5
+- ghc-paths >= 0.1.0.12
 - instant-core
 - instant-parser
 

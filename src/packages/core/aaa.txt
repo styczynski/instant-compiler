@@ -1,0 +1,28 @@
+module SSA.Syntax where
+
+import           Syntax.Base
+
+data SSATranslationError = SSANoError
+
+type SSATranslation r t = StateT (SSATranslationState r t) (ExceptT SSATranslationError IO)
+
+data (AST r t) => SSATranslationState r t = SSATranslationState {
+  annotTrace :: [TypeErrorPayload t]
+}
+
+data SSAVar = SSAVarID Int
+
+data SSANode =
+  Noop
+  | Move SSAVar SSAVar
+  | Expr2 SSAVar SSAOperation2 SSAVar SSAVar
+  | Expr1 SSAVar SSAOperation1 SSAVar
+  |
+
+
+runSSATranslator :: (AST r t) => IO (Either SSATranslationError )
+runSSATranslator ? = do
+  r <- runExceptT (runStateT (solver ?) emptySSATranslationState)
+  case r of
+    Left  e      -> return $ Left e
+    Right (s, _) -> return $ Right s

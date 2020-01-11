@@ -1,7 +1,6 @@
 -- | Calling conventions. There are basically only two: System V (Linux, OSX, BSD) and Win64\/fastcall
 
 module X86.Examples where
-
 import X86.X86
 
 -- | Example: Fibonacci function in Assembly
