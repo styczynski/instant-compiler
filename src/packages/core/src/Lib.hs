@@ -1,10 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module Lib where
 
 import Compiler.Compiler
 import Analyzer.Analyzer
 import Syntax.Base
 import Control.Exception
+import Control.Monad.IO.Class
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
@@ -12,6 +15,8 @@ someFunc = putStrLn "someFunc"
 type Verbosity = Int
 
 class (Analyzable r t) => Compilable r t where
+  enrich :: (r, t) -> IO r
+
   parse :: (r, t) -> String -> Either ExecutionResult (r, t)
 
   runInit :: (r, t) -> Environment -> IO Environment
@@ -29,6 +34,7 @@ class (Analyzable r t) => Compilable r t where
   runCWith (r0, t0) compiler v s env = case parse (r0, t0) s of --let ts = myLexer s in case pProgram ts of
             Left e    -> return $ e --FailedParse $ show s
             Right  (tree, t0) -> do
+                tree <- liftIO $ enrich (tree, t0)
                 _ <- analyze tree t0 env
                 _ <- return $ assert False 0
                 res <- runAST (r0, t0) env compiler

@@ -9,6 +9,7 @@ import           Control.Monad
 import           Data.Foldable
 import           Data.List
 
+import           Inference.Types
 import           Inference.Syntax
 import           Inference.TypingEnvironment
 import           Inference.TypeExpressionResolver
@@ -22,7 +23,7 @@ declareTypes :: (AST r t) => [(String, String)] -> (SimplifiedExpr r t) -> Infer
 declareTypes decls e = do
   foldrM (\(nameStr, typeStr) acc -> do
       declType <- parseTypeExpression typeStr
-      return $ SimplifiedLet (Ident nameStr) (SimplifiedTyped declType) acc) e decls
+      return $ SimplifiedLet (Ident nameStr) TypeMetaNone (SimplifiedTyped declType) acc) e decls
 
 valueOfType :: (AST r t) => String -> Infer r t (SimplifiedExpr r t)
 valueOfType typeExpression = do

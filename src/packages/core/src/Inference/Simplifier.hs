@@ -57,6 +57,12 @@ instance AST (Program ASTMetadata) (ASTNode ASTMetadata) where
   describeTraceItem r (ASTExpr _ ast) = "Expression: " ++ (prettifyErrorMessage False $ printTree ast)
   describeTraceItem r _ = "Unknown AST part"
 
+extractMeta :: ASTMetadata -> TypeMeta
+extractMeta EmptyMetadata = TypeMetaNone
+extractMeta (ASTMetadata (ASTRefNone) _) = TypeMetaNone
+extractMeta (ASTMetadata (ASTRef r) _) = TypeMeta r
+extractMeta _ = TypeMetaNone
+
 describeError :: Program ASTMetadata -> ASTNode ASTMetadata -> String
 describeError r (ASTProgram _ ast) = printTree ast
 describeError r (ASTExpr _ ast) = printTree ast
@@ -104,16 +110,16 @@ getFunSignature :: (TypeName ASTMetadata) -> Ident -> [Arg ASTMetadata] -> Strin
 getFunSignature retType name args =
   getSignature (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType)
 
-simplifyGlobalDefs :: (Map.Map Ident String) -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata)  (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
+simplifyGlobalDefs :: (Map.Map Ident (String, ASTMetadata)) -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata)  (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 simplifyGlobalDefs globalDefs expr = do
-  foldM (\acc (name, sig) -> do
+  foldM (\acc (name, (sig, meta)) -> do
     v <- valueOfType sig
-    return $ SimplifiedLet name v acc) expr (Map.toList globalDefs)
+    return $ SimplifiedLet name (extractMeta meta) v acc) expr (Map.toList globalDefs)
 
-extractGlobalDefs :: (Program ASTMetadata) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (Map.Map Ident String)
+extractGlobalDefs :: (Program ASTMetadata) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (Map.Map Ident (String, ASTMetadata))
 extractGlobalDefs (Program _ defs) = do
   return $ foldr (\def acc -> case def of
-    (FnDef _ retType name args _) -> Map.insert name (getFunSignature retType name args) acc
+    (FnDef meta retType name args _) -> Map.insert name ((getFunSignature retType name args), meta) acc
     _ -> acc) Map.empty defs
 
 simplifyTopDef :: TopDef ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
@@ -121,7 +127,7 @@ simplifyTopDef ast@(FnDef meta retType name args body) expr = do
   markTrace expr $ ASTTopDef meta ast
   b <- simplifyBlock body expr
   l <- createLambda (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
-  tl <- return $ SimplifiedLet name l expr
+  tl <- return $ SimplifiedLet name (extractMeta meta) l expr
   --_ <- liftIO $ putStrLn $ "\n\nTop def:\n"
   --_ <- liftIO $ putStrLn $ show tl
   r <- addExprAnnot $ return tl
@@ -148,7 +154,7 @@ simplifyStatement expr ast@(Ass meta name exprVal) = do
   markTrace expr $ ASTStmt meta ast
   valSimpl <- simplifyExpr exprVal SimplifiedSkip
   callSimpl <-  return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "=")) (SimplifiedVariable name)) valSimpl
-  r <- return $ SimplifiedLet name callSimpl expr
+  r <- return $ SimplifiedLet name (extractMeta meta) callSimpl expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -156,10 +162,10 @@ simplifyStatement expr ast@(While meta exprCond stmtExpr) = do
   markTrace expr $ ASTStmt meta ast
   condSimpl <- simplifyExpr exprCond SimplifiedSkip
   bodySimpl <- simplifyStatement SimplifiedSkip stmtExpr
-  whileCheckType <- return $ Scheme [] $ (TypeStatic "Bool")
+  whileCheckType <- return $ Scheme [] $ (TypeStatic TypeMetaNone "Bool")
   condSimplChecked <- return $ SimplifiedCheck condSimpl whileCheckType
   id <- freshIdent
-  r <- return $ SimplifiedLet id condSimplChecked bodySimpl
+  r <- return $ SimplifiedLet id (extractMeta meta) condSimplChecked bodySimpl
   r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
@@ -200,7 +206,7 @@ simplifyStatement expr ast@(BStmt meta block) = do
 simplifyStatement expr ast@(Incr meta ident) = do
   markTrace expr $ ASTStmt meta ast
   rVal <- return $ SimplifiedCall (SimplifiedVariable $ Ident "++") (SimplifiedVariable ident)
-  r <- return $ SimplifiedLet ident rVal expr
+  r <- return $ SimplifiedLet ident (extractMeta meta) rVal expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -234,7 +240,7 @@ getTypeDefaultAnnot typeName e = checkType (getTypeName typeName) e
 simplifyStatementDecl :: TypeName ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Item ASTMetadata -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 simplifyStatementDecl typeName expr ast@(NoInit meta name) = do
   markTrace expr $ ASTItem meta ast
-  r <- return $ SimplifiedLet name (getTypeDefaultValue typeName) expr
+  r <- return $ SimplifiedLet name (extractMeta meta) (getTypeDefaultValue typeName) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -242,7 +248,7 @@ simplifyStatementDecl typeName expr ast@(Init meta name initExpr) = do
   markTrace expr $ ASTItem meta ast
   e <- simplifyExpr initExpr expr
   annotExp <- getTypeDefaultAnnot typeName e
-  r <- return $ SimplifiedLet name annotExp expr
+  r <- return $ SimplifiedLet name (extractMeta meta) annotExp expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r

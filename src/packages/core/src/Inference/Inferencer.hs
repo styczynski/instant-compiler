@@ -153,10 +153,10 @@ inferE expr = do
   return $ TypeConstraint p (type1, type2)
 
 infer :: (AST r t) => SimplifiedExpr r t -> Infer r t (Type, [TypeConstraint r t])
-infer SimplifiedSkip            = return ((TypeStatic "Void"), [])
-infer (SimplifiedConstInt    _) = return ((TypeStatic "Int"), [])
-infer (SimplifiedConstBool   _) = return ((TypeStatic "Bool"), [])
-infer (SimplifiedConstString _) = return ((TypeStatic "String"), [])
+infer SimplifiedSkip            = return ((TypeStatic TypeMetaNone "Void"), [])
+infer (SimplifiedConstInt    _) = return ((TypeStatic TypeMetaNone "Int"), [])
+infer (SimplifiedConstBool   _) = return ((TypeStatic TypeMetaNone "Bool"), [])
+infer (SimplifiedConstString _) = return ((TypeStatic TypeMetaNone "String"), [])
 infer (SimplifiedAnnotated l t) = do
   s <- get
   put s { inferTrace = l }
@@ -164,7 +164,7 @@ infer (SimplifiedAnnotated l t) = do
 infer (SimplifiedTyped (Scheme _ t)) = return (t, [])
 infer (SimplifiedExportEnv         ) = do
   env <- ask
-  return (TypeAnnotated (AnnotationEnv env), [])
+  return (TypeAnnotated TypeMetaNone (AnnotationEnv env), [])
 infer (SimplifiedCheck e (Scheme _ t)) = do
   (type1, constraintype1) <- infer e
   bindExpr1     <- type1 <.> t
@@ -176,16 +176,16 @@ infer (SimplifiedVariable x) = do
 infer (SimplifiedFunction x e) = do
   typeVar     <- freshTypeVar
   (t, c) <- (x, Scheme [] typeVar) ==> (infer e)
-  return (typeVar `TypeArrow` t, c)
+  return (TypeArrow TypeMetaNone typeVar t, c)
 infer (SimplifiedCall e1 e2) = do
   (type1, constraintype1) <- infer e1
   (type2, constraintype2) <- infer e2
   typeVar       <- freshTypeVar
-  bindExpr1     <- type1 <.> (type2 `TypeArrow` typeVar)
+  bindExpr1     <- type1 <.> (TypeArrow TypeMetaNone type2 typeVar)
   ac       <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ constraintype2 ++ ac)
-infer (SimplifiedLetAs x e1 _ e2) = do
-  (gt, gc) <- infer (SimplifiedLet x e1 e2)
+infer (SimplifiedLetAs x meta e1 _ e2) = do
+  (gt, gc) <- infer (SimplifiedLet x meta e1 e2)
   env      <- ask
   typeVar       <- freshTypeVar
   (type1, constraintype1) <- infer e1
@@ -199,7 +199,7 @@ infer (SimplifiedLetAs x e1 _ e2) = do
       (type2, constraintype2) <-
         (x, sc) ==> (local (sub .>) (infer (SimplifiedTyped $ Scheme [] typeVar)))
       return (type2, ac ++ constraintype1 ++ constraintype2)
-infer (SimplifiedLet x e1 e2) = do
+infer (SimplifiedLet x meta e1 e2) = do
   env      <- ask
   (type1, constraintype1) <- infer e1
   s        <- lift $ lift $ lift $ runSolve constraintype1
@@ -208,11 +208,12 @@ infer (SimplifiedLet x e1 e2) = do
     Right sub -> do
       let sc = Scheme (generalized (sub .> env) (sub .> type1)) (sub .> type1)
       (type2, constraintype2) <- (x, sc) ==> (local (sub .>) (infer e2))
+      _ <- liftIO $ putStrLn $ "Infer let: [" ++ (show meta) ++ "] ."
       return (type2, constraintype1 ++ constraintype2)
 infer (SimplifiedFixPoint e1) = do
   (type1, constraintype1) <- infer e1
   typeVar       <- freshTypeVar
-  bindExpr1     <- (typeVar `TypeArrow` typeVar) <.> type1
+  bindExpr1     <- (TypeArrow TypeMetaNone typeVar typeVar) <.> type1
   ac       <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
 infer (SimplifiedUnaryOp (OpCustomUni name) e1) = do
@@ -220,7 +221,7 @@ infer (SimplifiedUnaryOp (OpCustomUni name) e1) = do
 infer (SimplifiedUnaryOp op e1) = do
   (type1, constraintype1) <- infer e1
   typeVar       <- freshTypeVar
-  absType1       <- return $ type1 `TypeArrow` typeVar
+  absType1       <- return $ TypeArrow TypeMetaNone type1 typeVar
   absType2       <- inferUnaryOperation op
   bindExpr1     <- absType1 <.> absType2
   ac       <- constraintAnnoTypeList [bindExpr1]
@@ -232,7 +233,7 @@ infer (SimplifiedBinaryOp op e1 e2) = do
   (type1, constraintype1) <- infer e1
   (type2, constraintype2) <- infer e2
   typeVar       <- freshTypeVar
-  absType1       <- return $ type1 `TypeArrow` (type2 `TypeArrow` typeVar)
+  absType1       <- return $ TypeArrow TypeMetaNone type1 (TypeArrow TypeMetaNone type2 typeVar)
   absType2       <- inferBinaryOperation op
   bindExpr1     <- absType1 <.> absType2
   ac       <- constraintAnnoTypeList [bindExpr1]
@@ -241,7 +242,7 @@ infer (SimplifiedIf cond tr fl) = do
   (type1, constraintype1) <- infer cond
   (type2, constraintype2) <- infer tr
   (type3, constraint3) <- infer fl
-  bindExpr1     <- type1 <.> (TypeStatic "Bool")
+  bindExpr1     <- type1 <.> (TypeStatic TypeMetaNone "Bool")
   bindExpr2     <- (type2 <.> type3)
   ac       <- constraintAnnoTypeList [bindExpr1, bindExpr2]
   return (type2, constraintype1 ++ constraintype2 ++ constraint3 ++ ac)
@@ -259,55 +260,52 @@ infer (SimplifiedAlternatives exps) = do
 infer (SimplifiedTagUnpack (Ident name) exp) = do
   (type1, constraintype1) <- infer exp
   typeVar       <- freshTypeVar
-  absType1       <- return $ type1 `TypeArrow` typeVar
+  absType1       <- return $ TypeArrow TypeMetaNone type1 typeVar
   polyTypeVar       <- freshTypeVar
   polyC    <- getTagIndex name
   polyV1   <- freshTypeVarPlaceholdersLock (polyC + 1)
   polyV2   <- freshTypeVarPlaceholdersLock (50 - polyC)
   absType2       <-
     return
-    $           (TypePoly $ polyV1 ++ [TypeComplex name [polyTypeVar]] ++ polyV2)
-    `TypeArrow` polyTypeVar
+    $ TypeArrow TypeMetaNone (TypePoly TypeMetaNone $ polyV1 ++ [TypeComplex TypeMetaNone name [polyTypeVar]] ++ polyV2) polyTypeVar
   bindExpr1 <- absType1 <.> absType2
   ac   <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
 infer (SimplifiedTagUnpackNonStrict (Ident name) exp) = do
   (type1, constraintype1) <- infer exp
   typeVar       <- freshTypeVar
-  absType1       <- return $ type1 `TypeArrow` typeVar
+  absType1       <- return $ TypeArrow TypeMetaNone type1 typeVar
   polyTypeVar       <- freshTypeVar
   polyC    <- getTagIndex name
   polyV1   <- freshTypeVarPlaceholders (polyC + 1)
   polyV2   <- freshTypeVarPlaceholders (50 - polyC)
   absType2       <-
     return
-    $           (TypePoly $ polyV1 ++ [TypeComplex name [polyTypeVar]] ++ polyV2)
-    `TypeArrow` polyTypeVar
+    $ TypeArrow TypeMetaNone (TypePoly TypeMetaNone $ polyV1 ++ [TypeComplex TypeMetaNone name [polyTypeVar]] ++ polyV2) polyTypeVar
   bindExpr1 <- absType1 <.> absType2
   ac   <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
 infer (SimplifiedTag (Ident name) SimplifiedSkip) = do
   absType1     <- freshTypeVar
-  polyTypeVar     <- return $ TypeUnit
+  polyTypeVar     <- return $ TypeUnit TypeMetaNone
   polyC  <- getTagIndex name
   polyV1 <- freshTypeVarPlaceholders (polyC + 1)
   polyV2 <- freshTypeVarPlaceholders (50 - polyC)
-  absType2     <- return $ (TypePoly $ polyV1 ++ [TypeComplex name [polyTypeVar]] ++ polyV2)
+  absType2     <- return $ (TypePoly TypeMetaNone $ polyV1 ++ [TypeComplex TypeMetaNone name [polyTypeVar]] ++ polyV2)
   bindExpr1   <- absType1 <.> absType2
   ac     <- constraintAnnoTypeList [bindExpr1]
   return (absType1, ac)
 infer (SimplifiedTag (Ident name) exp) = do
   (type1, constraintype1) <- infer exp
   typeVar       <- freshTypeVar
-  absType1       <- return $ type1 `TypeArrow` typeVar
+  absType1       <- return $ TypeArrow TypeMetaNone type1 typeVar
   polyTypeVar       <- freshTypeVar
   polyC    <- getTagIndex name
   polyV1   <- freshTypeVarPlaceholders (polyC + 1)
   polyV2   <- freshTypeVarPlaceholders (50 - polyC)
   absType2       <-
     return
-    $           polyTypeVar
-    `TypeArrow` (TypePoly $ polyV1 ++ [TypeComplex name [polyTypeVar]] ++ polyV2)
+    $ TypeArrow TypeMetaNone polyTypeVar (TypePoly TypeMetaNone $ polyV1 ++ [TypeComplex TypeMetaNone name [polyTypeVar]] ++ polyV2)
   bindExpr1 <- absType1 <.> absType2
   ac   <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
@@ -316,46 +314,43 @@ inferBinaryOperation :: (AST r t) => BinaryOp -> Infer r t Type
 inferBinaryOperation OpSemicolon = do
   typeVar1 <- freshTypeVar
   typeVar2 <- freshTypeVar
-  return $ typeVar1 `TypeArrow` (typeVar2 `TypeArrow` typeVar2)
+  return $ TypeArrow TypeMetaNone typeVar1 (TypeArrow TypeMetaNone typeVar2 typeVar2)
 inferBinaryOperation OpSame = do
   typeVar <- freshTypeVar
-  return $ typeVar `TypeArrow` (typeVar `TypeArrow` typeVar)
+  return $ TypeArrow TypeMetaNone typeVar (TypeArrow TypeMetaNone typeVar typeVar)
 inferBinaryOperation OpCons = do
   typeVar <- freshTypeVar
-  return $ (typeVar) `TypeArrow` ((TypeList typeVar) `TypeArrow` (TypeList typeVar))
+  return $ TypeArrow TypeMetaNone (typeVar) (TypeArrow TypeMetaNone (TypeList TypeMetaNone typeVar) (TypeList TypeMetaNone typeVar))
 inferBinaryOperation OpTupleCons = do
   typeVar  <- freshTypeVar
   typeVar2 <- freshTypeVar
   typeVar3 <- freshTypeVar
   return
-    $           (typeVar)
-    `TypeArrow` (           (TypeTuple typeVar2 typeVar3)
-                `TypeArrow` (TypeTuple typeVar (TypeTuple typeVar2 typeVar3))
-                )
+    $ TypeArrow TypeMetaNone (typeVar) (TypeArrow TypeMetaNone (TypeTuple TypeMetaNone typeVar2 typeVar3) (TypeTuple TypeMetaNone typeVar (TypeTuple TypeMetaNone typeVar2 typeVar3)))
 
 inferUnaryOperation :: (AST r t) => UnaryOp -> Infer r t Type
 inferUnaryOperation OpHead = do
   typeVar <- freshTypeVar
-  return $ (TypeList typeVar) `TypeArrow` (typeVar)
+  return $ TypeArrow TypeMetaNone  (TypeList TypeMetaNone typeVar) (typeVar)
 inferUnaryOperation OpTails = do
   typeVar <- freshTypeVar
-  return $ (TypeList typeVar) `TypeArrow` (TypeList typeVar)
+  return $ TypeArrow TypeMetaNone  (TypeList TypeMetaNone typeVar) (TypeList TypeMetaNone typeVar)
 inferUnaryOperation OpEmptyList = do
   typeVar  <- freshTypeVar
   typeVar2 <- freshTypeVar
-  return $ typeVar `TypeArrow` (TypeList typeVar2)
+  return $ TypeArrow TypeMetaNone typeVar (TypeList TypeMetaNone typeVar2)
 inferUnaryOperation OpEmptyTuple = do
   typeVar <- freshTypeVar
-  return $ typeVar `TypeArrow` (TypeTuple TypeUnit TypeUnit)
+  return $ TypeArrow TypeMetaNone typeVar (TypeTuple TypeMetaNone (TypeUnit TypeMetaNone) (TypeUnit TypeMetaNone))
 inferUnaryOperation OpListNth = do
   typeVar <- freshTypeVar
-  return $ (TypeList typeVar) `TypeArrow` typeVar
+  return $ TypeArrow TypeMetaNone (TypeList TypeMetaNone typeVar) typeVar
 inferUnaryOperation (OpTupleNth index len) = do
   (tupleType, elsTypes) <- foldrM
     (\_ (tup, typeVars) -> do
       typeVar <- freshTypeVar
-      return $ ((TypeTuple typeVar tup), [typeVar] ++ typeVars)
+      return $ ((TypeTuple TypeMetaNone typeVar tup), [typeVar] ++ typeVars)
     )
-    ((TypeTuple TypeUnit TypeUnit), [])
+    ((TypeTuple TypeMetaNone (TypeUnit TypeMetaNone) (TypeUnit TypeMetaNone)), [])
     (replicate len 0)
-  return $ (tupleType) `TypeArrow` (elsTypes !! index)
+  return $ TypeArrow TypeMetaNone (tupleType) (elsTypes !! index)

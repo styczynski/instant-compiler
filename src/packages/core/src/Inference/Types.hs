@@ -31,17 +31,19 @@ data TypeEnvironment = TypeEnvironment { types :: Map.Map Ident Scheme }
 
 data TypeAnnotation = AnnotationEnv TypeEnvironment deriving (Show, Eq)
 
+data TypeMeta = TypeMetaNone | TypeMeta Int deriving (Show, Eq)
+
 -- | Data types for inference
 data Type
-  = TypeVar TypeVar
-  | TypeStatic String
-  | TypeArrow Type Type
-  | TypeList Type
-  | TypeTuple Type Type
-  | TypeUnit
-  | TypeComplex String [Type]
-  | TypePoly [Type]
-  | TypeAnnotated TypeAnnotation
+  = TypeVar TypeMeta TypeVar
+  | TypeStatic TypeMeta String
+  | TypeArrow TypeMeta Type Type
+  | TypeList TypeMeta Type
+  | TypeTuple TypeMeta Type Type
+  | TypeUnit TypeMeta
+  | TypeComplex TypeMeta String [Type]
+  | TypePoly TypeMeta [Type]
+  | TypeAnnotated TypeMeta TypeAnnotation
   deriving (Show, Eq)
 
 -- | Type scheme
@@ -50,31 +52,31 @@ data Scheme = Scheme [TypeVar] Type
 
 -- | Extracts free variables from the type
 getTypeFVNames :: Type -> [String]
-getTypeFVNames (TypeVar  (TV name)) = [name]
-getTypeFVNames (TypeList t        ) = getTypeFVNames t
-getTypeFVNames (TypeArrow a b     ) = (getTypeFVNames a) ++ (getTypeFVNames b)
-getTypeFVNames (TypePoly alternatives) =
+getTypeFVNames (TypeVar  _ (TV name)) = [name]
+getTypeFVNames (TypeList _ t        ) = getTypeFVNames t
+getTypeFVNames (TypeArrow _ a b     ) = (getTypeFVNames a) ++ (getTypeFVNames b)
+getTypeFVNames (TypePoly _ alternatives) =
   foldr (\t acc -> acc ++ (getTypeFVNames t)) [] alternatives
-getTypeFVNames (TypeComplex name deps) =
+getTypeFVNames (TypeComplex _ name deps) =
   foldr (\t acc -> acc ++ (getTypeFVNames t)) [] deps
-getTypeFVNames (TypeTuple a b) = (getTypeFVNames a) ++ (getTypeFVNames b)
+getTypeFVNames (TypeTuple _ a b) = (getTypeFVNames a) ++ (getTypeFVNames b)
 getTypeFVNames _               = []
 
 -- | Helper to reassign types for readability
 remapTypesRec :: Map.Map String String -> Type -> Type
-remapTypesRec fvMap t@(TypeVar (TV name)) = case Map.lookup name fvMap of
-  (Just newName) -> (TypeVar (TV newName))
+remapTypesRec fvMap t@(TypeVar r (TV name)) = case Map.lookup name fvMap of
+  (Just newName) -> (TypeVar r (TV newName))
   (Nothing     ) -> t
-remapTypesRec fvMap (TypeAnnotated _) = TypeUnit
-remapTypesRec fvMap (TypeList      t) = TypeList $ remapTypesRec fvMap t
-remapTypesRec fvMap (TypeArrow a b) =
-  TypeArrow (remapTypesRec fvMap a) (remapTypesRec fvMap b)
-remapTypesRec fvMap (TypeComplex name deps) =
-  TypeComplex name $ map (remapTypesRec fvMap) deps
-remapTypesRec fvMap (TypePoly alternatives) =
-  TypePoly $ map (remapTypesRec fvMap) alternatives
-remapTypesRec fvMap (TypeTuple a b) =
-  TypeTuple (remapTypesRec fvMap a) (remapTypesRec fvMap b)
+remapTypesRec fvMap (TypeAnnotated r _) = TypeUnit r
+remapTypesRec fvMap (TypeList      r t) = TypeList r $ remapTypesRec fvMap t
+remapTypesRec fvMap (TypeArrow r a b) =
+  TypeArrow r (remapTypesRec fvMap a) (remapTypesRec fvMap b)
+remapTypesRec fvMap (TypeComplex r name deps) =
+  TypeComplex r name $ map (remapTypesRec fvMap) deps
+remapTypesRec fvMap (TypePoly r alternatives) =
+  TypePoly r $ map (remapTypesRec fvMap) alternatives
+remapTypesRec fvMap (TypeTuple r a b) =
+  TypeTuple r (remapTypesRec fvMap a) (remapTypesRec fvMap b)
 remapTypesRec _ v = v
 
 -- | Gets unique free variables names
@@ -96,23 +98,23 @@ remapTypes t =
       in  remapTypesRec fvMap t
 
 isNotPlaceholder :: Type -> Bool
-isNotPlaceholder (TypeVar _) = False
+isNotPlaceholder (TypeVar _ _) = False
 isNotPlaceholder _           = True
 
 -- | Helper to print types in readable format
 typeToStrRec :: [TypeVar] -> Type -> [Type] -> String
-typeToStrRec vars TypeUnit funArgs = "Void"
-typeToStrRec vars (TypeAnnotated (AnnotationEnv v)) funArgs =
+typeToStrRec vars (TypeUnit _) funArgs = "Void"
+typeToStrRec vars (TypeAnnotated _ (AnnotationEnv v)) funArgs =
   "export{" ++ (show v) ++ "}"
-typeToStrRec vars (TypeList t) funArgs = "[" ++ (typeToStrRec vars t []) ++ "]"
+typeToStrRec vars (TypeList _ t) funArgs = "[" ++ (typeToStrRec vars t []) ++ "]"
 
 --typeToStrRec vars (TypeArrow a b) funArgs =
 --  "(" ++ (typeToStrRec vars a []) ++ ") -> " ++ (typeToStrRec vars b [])
 
-typeToStrRec vars (TypeArrow a (TypeArrow b c)) funArgs =
-  typeToStrRec vars (TypeArrow b c) (funArgs ++ [a])
+typeToStrRec vars (TypeArrow _ a (TypeArrow r b c)) funArgs =
+  typeToStrRec vars (TypeArrow r b c) (funArgs ++ [a])
 
-typeToStrRec vars (TypeArrow a retType) funArgs =
+typeToStrRec vars (TypeArrow _ a retType) funArgs =
   "("
       ++ (foldr
            (\el acc ->
@@ -125,9 +127,9 @@ typeToStrRec vars (TypeArrow a retType) funArgs =
          )
       ++ "): " ++ (typeToStrRec vars retType [])
 
-typeToStrRec vars (TypeVar    (TV name)) funArgs = name
-typeToStrRec vars (TypeStatic name     ) funArgs = name
-typeToStrRec vars (TypePoly alternatives) funArgs =
+typeToStrRec vars (TypeVar    _ (TV name)) funArgs = name
+typeToStrRec vars (TypeStatic _ name     ) funArgs = name
+typeToStrRec vars (TypePoly _ alternatives) funArgs =
   "[< "
     ++ (foldr
          (\el acc ->
@@ -139,7 +141,7 @@ typeToStrRec vars (TypePoly alternatives) funArgs =
          (filter isNotPlaceholder alternatives)
        )
     ++ "]"
-typeToStrRec vars (TypeComplex name deps) funArgs =
+typeToStrRec vars (TypeComplex _ name deps) funArgs =
   name
     ++ " ("
     ++ (foldr
@@ -152,10 +154,10 @@ typeToStrRec vars (TypeComplex name deps) funArgs =
          deps
        )
     ++ ")"
-typeToStrRec vars (TypeTuple TypeUnit TypeUnit) funArgs = "()"
-typeToStrRec vars (TypeTuple a (TypeTuple TypeUnit TypeUnit)) funArgs =
+typeToStrRec vars (TypeTuple _ (TypeUnit _) (TypeUnit _)) funArgs = "()"
+typeToStrRec vars (TypeTuple _ a (TypeTuple _ (TypeUnit _) (TypeUnit _))) funArgs =
   typeToStrRec vars a []
-typeToStrRec vars (TypeTuple a b) funArgs =
+typeToStrRec vars (TypeTuple _ a b) funArgs =
   (typeToStrRec vars a []) ++ " * " ++ (typeToStrRec vars b [])
 
 -- | Print readable text representation for type

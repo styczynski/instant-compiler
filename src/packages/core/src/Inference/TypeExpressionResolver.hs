@@ -47,7 +47,7 @@ getTypeSimpleExpressionFV (TypeSExprIdent _ _) = return Map.empty
 getTypeSimpleExpressionFV (TypeSExprEmpty _) = return Map.empty
 getTypeSimpleExpressionFV (TypeSExprAbstract _ (TypeIdentAbstract name)) = do
   tvv <- freshTypeVar
-  return $ let (TypeVar tv) = tvv in Map.singleton name tv
+  return $ let (TypeVar _ tv) = tvv in Map.singleton name tv
 
 getTypeExpressionFV :: (AST r t) => TypeExpression ASTMetadata -> Infer r t (Map.Map String TypeVar)
 getTypeExpressionFV (TypeExprSimple _ simpl) = getTypeSimpleExpressionFV simpl
@@ -110,12 +110,12 @@ instance (AST r t) => WithFreedomM (TypeExpression ASTMetadata) String (Infer r 
 
 resolveTypeSimpleExpressionRec
   :: (AST r t) => (Map.Map String TypeVar) -> TypeSimpleExpression ASTMetadata -> Infer r t Type
-resolveTypeSimpleExpressionRec fvs (TypeSExprEmpty _) = return TypeUnit
+resolveTypeSimpleExpressionRec fvs (TypeSExprEmpty _) = return $ TypeUnit TypeMetaNone
 resolveTypeSimpleExpressionRec fvs (TypeSExprIdent _ (Ident name)) =
-  return $ TypeStatic name
+  return $ TypeStatic TypeMetaNone name
 resolveTypeSimpleExpressionRec fvs (TypeSExprList _ expr) = do
   t <- resolveTypeExpressionRec fvs expr
-  return $ TypeList t
+  return $ TypeList TypeMetaNone t
 resolveTypeSimpleExpressionRec fvs (TypeSExprAbstract _ (TypeIdentAbstract name))
   = do
     parsedName <- return $ [ x | x <- name, not (x `elem` "'") ]
@@ -128,7 +128,7 @@ resolveTypeSimpleExpressionRec fvs (TypeSExprAbstract _ (TypeIdentAbstract name)
           $  "Type name "
           ++ name
           ++ " is not a valid polymorhic type name"
-      else let (Just tv) = Map.lookup name fvs in return $ TypeVar tv
+      else let (Just tv) = Map.lookup name fvs in return $ TypeVar TypeMetaNone tv
 
 resolveTypeExpressionRec
   :: (AST r t) => (Map.Map String TypeVar) -> TypeExpression ASTMetadata -> Infer r t Type
@@ -143,22 +143,22 @@ resolveTypeExpressionRec fvs (TypeExprIdent _ (TypeArgJust _ firstParam restPara
       )
       ([])
       ([firstParam] ++ restParams)
-    return $ TypeComplex name typeParams
+    return $ TypeComplex TypeMetaNone name typeParams
 resolveTypeExpressionRec fvs (TypeExprIdent _ (TypeArgJustOne _ param) (Ident name))
   = do
     typeParam <- resolveTypeSimpleExpressionRec fvs param
-    return $ TypeComplex name [typeParam]
+    return $ TypeComplex TypeMetaNone name [typeParam]
 resolveTypeExpressionRec fvs (TypeFun _ a b) = do
   t1 <- resolveTypeExpressionRec fvs a
   t2 <- resolveTypeExpressionRec fvs b
-  return $ TypeArrow t1 t2
+  return $ TypeArrow TypeMetaNone t1 t2
 resolveTypeExpressionRec fvs (TypeExprTuple _ fstEl restEls) = do
   tupleT <- foldlM
     (\acc expr -> do
       t <- resolveTypeExpressionRec fvs expr
-      return $ TypeTuple t acc
+      return $ TypeTuple TypeMetaNone t acc
     )
-    (TypeTuple TypeUnit TypeUnit)
+    (TypeTuple TypeMetaNone (TypeUnit TypeMetaNone) (TypeUnit TypeMetaNone))
     ([fstEl] ++ restEls)
   return tupleT
 
@@ -182,4 +182,4 @@ parseTypeExpression typeExpr =
       Bad t -> do
         _ <- liftIO $ liftIO $ liftIO $ putStrLn $ typeExpr
         _ <- liftIO $ liftIO $ liftIO $ putStrLn $ show t
-        return $ Scheme [] TypeUnit
+        return $ Scheme [] (TypeUnit TypeMetaNone)

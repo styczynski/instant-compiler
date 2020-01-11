@@ -100,7 +100,7 @@ freshTypeVar :: (AST r t) => Infer r t Type
 freshTypeVar = do
   s <- get
   put s { count = count s + 1 }
-  return $ TypeVar $ TV (letters !! count s)
+  return $ TypeVar TypeMetaNone $ TV (letters !! count s)
 
 freshCountInt :: (AST r t) => Infer r t Int
 freshCountInt = do
@@ -134,7 +134,7 @@ freshTypeVarPlaceholdersLock :: (AST r t) => Int -> Infer r t [Type]
 freshTypeVarPlaceholdersLock n = do
   r <- foldrM
     (\_ acc -> do
-      tv <- return $ TypeUnit
+      tv <- return $ TypeUnit TypeMetaNone
       return $ acc ++ [tv]
     )
     []
@@ -166,20 +166,20 @@ class NormalizableWith a b where
 
 -- | Helper to normalize type free variables
 instance NormalizableWith TypeVar Type where
-  normalizeWith _ TypeUnit          = TypeUnit
-  normalizeWith _ (TypeAnnotated v) = (TypeAnnotated v)
-  normalizeWith ord (TypeArrow a b) =
-    TypeArrow (normalizeWith ord a) (normalizeWith ord b)
-  normalizeWith ord (TypeTuple a b) =
-    TypeTuple (normalizeWith ord a) (normalizeWith ord b)
-  normalizeWith ord (TypeList   a) = TypeList (normalizeWith ord a)
-  normalizeWith _   (TypeStatic a) = TypeStatic a
-  normalizeWith ord (TypeComplex name deps) =
-    TypeComplex name $ map (normalizeWith ord) deps
-  normalizeWith ord (TypePoly alternatives) =
-    TypePoly $ map (normalizeWith ord) alternatives
-  normalizeWith ord (TypeVar a) = case Prelude.lookup a ord of
-    Just x  -> TypeVar x
+  normalizeWith _ (TypeUnit r)          = TypeUnit r
+  normalizeWith _ (TypeAnnotated r v) = (TypeAnnotated r v)
+  normalizeWith ord (TypeArrow r a b) =
+    TypeArrow r (normalizeWith ord a) (normalizeWith ord b)
+  normalizeWith ord (TypeTuple r a b) =
+    TypeTuple r (normalizeWith ord a) (normalizeWith ord b)
+  normalizeWith ord (TypeList r a) = TypeList r (normalizeWith ord a)
+  normalizeWith _   (TypeStatic r a) = TypeStatic r a
+  normalizeWith ord (TypeComplex r name deps) =
+    TypeComplex r name $ map (normalizeWith ord) deps
+  normalizeWith ord (TypePoly r alternatives) =
+    TypePoly r $ map (normalizeWith ord) alternatives
+  normalizeWith ord (TypeVar r a) = case Prelude.lookup a ord of
+    Just x  -> TypeVar r x
     Nothing -> error "Type variable does not exist in type signature"
   normalizeWith _ v = v
 

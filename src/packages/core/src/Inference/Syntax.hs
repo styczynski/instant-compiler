@@ -78,8 +78,8 @@ data (AST r t) => SimplifiedExpr r t
   = SimplifiedVariable Ident
   | SimplifiedCall (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedFunction Ident (SimplifiedExpr r t)
-  | SimplifiedLet Ident (SimplifiedExpr r t) (SimplifiedExpr r t)
-  | SimplifiedLetAs Ident (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedLet Ident TypeMeta (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedLetAs Ident TypeMeta (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedIf (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedFixPoint (SimplifiedExpr r t)
   | SimplifiedBinaryOp BinaryOp (SimplifiedExpr r t) (SimplifiedExpr r t)

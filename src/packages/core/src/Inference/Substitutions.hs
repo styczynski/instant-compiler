@@ -57,39 +57,43 @@ class (Ord b, Monad m) => WithFreedomM a b m where
 class (WithFreedom a b) => Substitutable a b c where
   (.>)     :: (Substitution b c) -> a -> a
 
+isTypeVarWith :: Type -> TypeVar -> Bool
+isTypeVarWith (TypeVar _ a) b = a == b
+isTypeVarWith _ _ = False
+
 -- | This is used to set type variables during construction of type contraints
 instance (AST r t) => Bindable r t TypeVar Type where
-  (<->) a t | t == (TypeVar a) = Right emptySubst
-            | isRecursive a t  = Left $ InfiniteType [] a t
-            | otherwise        = Right (Subst $ Map.singleton a t)
+  (<->) a t | isTypeVarWith t a = Right emptySubst
+            | isRecursive a t   = Left $ InfiniteType [] a t
+            | otherwise         = Right (Subst $ Map.singleton a t)
 
 instance WithFreedom Type TypeVar where
-  freeDimensions (TypeStatic a) = Set.empty
-  freeDimensions (TypeVar    a) = Set.singleton a
-  freeDimensions (TypeList   a) = freeDimensions a
-  freeDimensions (TypeComplex name deps) =
+  freeDimensions (TypeStatic _ a) = Set.empty
+  freeDimensions (TypeVar    _ a) = Set.singleton a
+  freeDimensions (TypeList   _ a) = freeDimensions a
+  freeDimensions (TypeComplex _ name deps) =
     foldl (\acc el -> Set.union acc $ freeDimensions el) (Set.empty) deps
-  freeDimensions (TypePoly alt) =
+  freeDimensions (TypePoly _ alt) =
     foldl (\acc el -> Set.union acc $ freeDimensions el) (Set.empty) alt
-  freeDimensions (TypeArrow t1 t2) =
+  freeDimensions (TypeArrow _ t1 t2) =
     Set.union (freeDimensions t1) (freeDimensions t2)
-  freeDimensions (TypeTuple t1 t2) =
+  freeDimensions (TypeTuple _ t1 t2) =
     Set.union (freeDimensions t1) (freeDimensions t2)
-  freeDimensions TypeUnit          = Set.empty
-  freeDimensions (TypeAnnotated _) = Set.empty
-  freeDimensions _                 = Set.empty
+  freeDimensions (TypeUnit _)        = Set.empty
+  freeDimensions (TypeAnnotated _ _) = Set.empty
+  freeDimensions _                   = Set.empty
 
 -- | This is used to replace type variables within types
 instance Substitutable Type TypeVar Type where
-  (.>) _         (  TypeStatic a         ) = TypeStatic a
-  (.>) s (TypeComplex name deps) = TypeComplex name $ map (\a -> s .> a) deps
-  (.>) (Subst s) t@(TypeVar a            ) = Map.findWithDefault t a s
-  (.>) s         (  t1 `TypeArrow` t2    ) = TypeArrow (s .> t1) (s .> t2)
-  (.>) s         (  t1 `TypeTuple` t2    ) = TypeTuple (s .> t1) (s .> t2)
-  (.>) s         (  TypeList a           ) = TypeList $ s .> a
-  (.>) s         TypeUnit                  = TypeUnit
-  (.>) s         (TypeAnnotated v  )       = (TypeAnnotated v)
-  (.>) s         (TypePoly      alt)       = TypePoly $ map (\a -> s .> a) alt
+  (.>) _         (  TypeStatic r a         ) = TypeStatic r a
+  (.>) s (TypeComplex r name deps) = TypeComplex r name $ map (\a -> s .> a) deps
+  (.>) (Subst s) t@(TypeVar _ a            ) = Map.findWithDefault t a s
+  (.>) s         (  TypeArrow r t1 t2    )   = TypeArrow r (s .> t1) (s .> t2)
+  (.>) s         (  TypeTuple r t1 t2    )   = TypeTuple r (s .> t1) (s .> t2)
+  (.>) s         (  TypeList r a           ) = TypeList r $ s .> a
+  (.>) s         (TypeUnit r)                = TypeUnit r
+  (.>) s         (TypeAnnotated r v  )       = (TypeAnnotated r v)
+  (.>) s         (TypePoly      r alt)       = TypePoly r $ map (\a -> s .> a) alt
 
 instance WithFreedom Scheme TypeVar where
   freeDimensions (Scheme vars t) =

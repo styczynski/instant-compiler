@@ -97,14 +97,14 @@ instance (AST r t) => BindableSolve r t TypeVar Type where
 -- | This instance represents binding type to type (unification)
 instance (AST r t) => BindableSolve r t Type Type where
   (<-$->) typeArgA typeArgB | typeArgA == typeArgB                    = return emptySubst
-  (<-$->) (TypeVar v)       t                 = v <-$-> t
-  (<-$->) t                 (TypeVar  v     ) = v <-$-> t
-  (<-$->) (TypeList typeArgA    ) (TypeList typeArgB    ) = [typeArgA] <-$-> [typeArgB]
-  (<-$->) (TypeTuple typeArgA typeArgB) (TypeTuple typeArgC typeArgD) = [typeArgA, typeArgB] <-$-> [typeArgC, typeArgD]
-  (<-$->) (TypeArrow typeArgA typeArgB) (TypeArrow typeArgC typeArgD) = [typeArgA, typeArgB] <-$-> [typeArgC, typeArgD]
-  (<-$->) typeArgA@(TypePoly alternatives1) typeArgB@(TypePoly alternatives2) =
+  (<-$->) (TypeVar _ v)       t                 = v <-$-> t
+  (<-$->) t                 (TypeVar  _ v     ) = v <-$-> t
+  (<-$->) (TypeList _ typeArgA    ) (TypeList _ typeArgB    ) = [typeArgA] <-$-> [typeArgB]
+  (<-$->) (TypeTuple _ typeArgA typeArgB) (TypeTuple _ typeArgC typeArgD) = [typeArgA, typeArgB] <-$-> [typeArgC, typeArgD]
+  (<-$->) (TypeArrow _ typeArgA typeArgB) (TypeArrow _ typeArgC typeArgD) = [typeArgA, typeArgB] <-$-> [typeArgC, typeArgD]
+  (<-$->) typeArgA@(TypePoly _ alternatives1) typeArgB@(TypePoly _ alternatives2) =
     alternatives1 <-$-> alternatives2
-  (<-$->) typeArgA@(TypeComplex name1 deps1) typeArgB@(TypeComplex name2 deps2) = do
+  (<-$->) typeArgA@(TypeComplex _ name1 deps1) typeArgB@(TypeComplex _ name2 deps2) = do
     payl <- errSolvePayload
     _    <- if not (name1 == name2)
       then throwError $ UnificationMismatch payl [typeArgA] [typeArgB]
