@@ -108,7 +108,7 @@ simplifyProgram ast@(Program _ defs) = do
 
 getFunSignature :: (TypeName ASTMetadata) -> Ident -> [Arg ASTMetadata] -> String
 getFunSignature retType name args =
-  getSignature (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType)
+  getSignature (map (\(Arg _ typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType)
 
 simplifyGlobalDefs :: (Map.Map Ident (String, ASTMetadata)) -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata)  (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 simplifyGlobalDefs globalDefs expr = do
@@ -126,7 +126,7 @@ simplifyTopDef :: TopDef ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (A
 simplifyTopDef ast@(FnDef meta retType name args body) expr = do
   markTrace expr $ ASTTopDef meta ast
   b <- simplifyBlock body expr
-  l <- createLambda (map (\(Arg EmptyMetadata typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
+  l <- createLambda (map (\(Arg _ typeName (Ident argName)) -> (getTypeName typeName, argName)) args) (getTypeName retType) b
   tl <- return $ SimplifiedLet name (extractMeta meta) l expr
   --_ <- liftIO $ putStrLn $ "\n\nTop def:\n"
   --_ <- liftIO $ putStrLn $ show tl

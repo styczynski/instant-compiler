@@ -32,7 +32,7 @@ instance Analyzable (Program ASTMetadata) (ASTNode ASTMetadata) where
 instance Compilable (Program ASTMetadata) (ASTNode ASTMetadata) where
   parse (_, t0) source = let ts = myLexer source in case pProgram ts of
     Bad e -> Left $ FailedParse $ show source
-    Ok r -> Right (fmap (\_ -> EmptyMetadata) r, t0)
+    Ok r -> Right (payloadMap (\_ -> EmptyMetadata) r, t0)
   enrich (r, t0) = runEnrich (r, t0) r
 
 

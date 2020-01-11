@@ -35,6 +35,7 @@ class (Analyzable r t) => Compilable r t where
             Left e    -> return $ e --FailedParse $ show s
             Right  (tree, t0) -> do
                 tree <- liftIO $ enrich (tree, t0)
+                _ <- liftIO $ putStrLn $ show tree
                 _ <- analyze tree t0 env
                 _ <- return $ assert False 0
                 res <- runAST (r0, t0) env compiler

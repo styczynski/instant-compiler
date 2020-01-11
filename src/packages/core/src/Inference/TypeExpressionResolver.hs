@@ -178,7 +178,7 @@ parseTypeExpression typeExpr =
   let ts = myLexer typeExpr
   in
     case pTypeExpression ts of
-      Ok tree -> resolveTypeExpression $ fmap (\_ -> EmptyMetadata) tree
+      Ok tree -> resolveTypeExpression $ payloadMap (\_ -> EmptyMetadata) tree
       Bad t -> do
         _ <- liftIO $ liftIO $ liftIO $ putStrLn $ typeExpr
         _ <- liftIO $ liftIO $ liftIO $ putStrLn $ show t

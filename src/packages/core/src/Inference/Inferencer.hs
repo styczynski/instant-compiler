@@ -208,7 +208,7 @@ infer (SimplifiedLet x meta e1 e2) = do
     Right sub -> do
       let sc = Scheme (generalized (sub .> env) (sub .> type1)) (sub .> type1)
       (type2, constraintype2) <- (x, sc) ==> (local (sub .>) (infer e2))
-      _ <- liftIO $ putStrLn $ "Infer let: [" ++ (show meta) ++ "] ."
+      _ <- liftIO $ putStrLn $ "Infer let: [" ++ (show meta) ++ "] -> " ++ (show type2)
       return (type2, constraintype1 ++ constraintype2)
 infer (SimplifiedFixPoint e1) = do
   (type1, constraintype1) <- infer e1
