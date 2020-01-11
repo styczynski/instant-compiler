@@ -4,7 +4,7 @@ instant-compiler.cabal
 *~
 *.cabal
 .idea/
-src/packages/parser/parser/
+#src/packages/parser/parser/
 **/_build/
 **/.stack-work/
 build.lock
