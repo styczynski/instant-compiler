@@ -60,7 +60,7 @@ instance AST (Program ASTMetadata) (ASTNode ASTMetadata) where
 extractMeta :: ASTMetadata -> TypeMeta
 extractMeta EmptyMetadata = TypeMetaNone
 extractMeta (ASTMetadata (ASTRefNone) _) = TypeMetaNone
-extractMeta (ASTMetadata (ASTRef r) _) = TypeMeta r
+extractMeta (ASTMetadata (ASTRef r) _) = TypeMeta [r]
 extractMeta _ = TypeMetaNone
 
 describeError :: Program ASTMetadata -> ASTNode ASTMetadata -> String
@@ -97,10 +97,10 @@ getPreface p = do
     ("!=", "'a -> 'a -> Bool")] p
 
 simplifyProgram :: (Program ASTMetadata) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
-simplifyProgram ast@(Program _ defs) = do
+simplifyProgram ast@(Program meta defs) = do
   u <- valueOfType "Void"
   globalDefs <- extractGlobalDefs ast
-  p0 <- foldrM (\def acc -> simplifyTopDef def acc) (SimplifiedCall (SimplifiedVariable $ Ident "main") u) defs
+  p0 <- foldrM (\def acc -> simplifyTopDef def acc) (SimplifiedCall (SimplifiedVariable (extractMeta meta) $ Ident "main") u) defs
   p0 <- simplifyGlobalDefs globalDefs p0
   p <- getPreface p0
   --_ <- liftIO $ putStrLn $ show p
@@ -153,7 +153,7 @@ simplifyStatement expr ast@(Decl meta typeName inits) = do
 simplifyStatement expr ast@(Ass meta name exprVal) = do
   markTrace expr $ ASTStmt meta ast
   valSimpl <- simplifyExpr exprVal SimplifiedSkip
-  callSimpl <-  return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "=")) (SimplifiedVariable name)) valSimpl
+  callSimpl <-  return $ SimplifiedCall (SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "=") (SimplifiedVariable (extractMeta meta) name)) valSimpl
   r <- return $ SimplifiedLet name (extractMeta meta) callSimpl expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
@@ -166,7 +166,7 @@ simplifyStatement expr ast@(While meta exprCond stmtExpr) = do
   condSimplChecked <- return $ SimplifiedCheck condSimpl whileCheckType
   id <- freshIdent
   r <- return $ SimplifiedLet id (extractMeta meta) condSimplChecked bodySimpl
-  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "then")) r) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -175,8 +175,8 @@ simplifyStatement expr ast@(CondElse meta exprCond stmtThen stmtElse) = do
   condSimpl <- simplifyExpr exprCond SimplifiedSkip
   thenSimpl <- simplifyStatement SimplifiedSkip stmtThen
   elseSimpl <- simplifyStatement SimplifiedSkip stmtElse
-  r <- return $ SimplifiedIf condSimpl (SimplifiedCall (SimplifiedVariable $ Ident "ignore") thenSimpl) (SimplifiedCall (SimplifiedVariable $ Ident "ignore") elseSimpl)
-  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
+  r <- return $ SimplifiedIf condSimpl (SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "ignore") thenSimpl) (SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "ignore") elseSimpl)
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "then")) r) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -185,15 +185,15 @@ simplifyStatement expr ast@(Cond meta exprCond stmtThen) = do
   condSimpl <- simplifyExpr exprCond SimplifiedSkip
   thenSimpl <- simplifyStatement SimplifiedSkip stmtThen
   elseSimpl <- valueOfType "Void"
-  r <- return $ SimplifiedIf condSimpl (SimplifiedCall (SimplifiedVariable $ Ident "ignore") thenSimpl) (SimplifiedCall (SimplifiedVariable $ Ident "ignore") elseSimpl)
-  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) r) expr
+  r <- return $ SimplifiedIf condSimpl (SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "ignore") thenSimpl) (SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "ignore") elseSimpl)
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "then")) r) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
 simplifyStatement expr ast@(SExp meta stmtExpr) = do
   markTrace expr $ ASTStmt meta ast
   e <- simplifyExpr stmtExpr expr
-  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable $ Ident "then")) e) expr
+  r <- return $ SimplifiedCall ((SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "then")) e) expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
   return r
@@ -205,7 +205,7 @@ simplifyStatement expr ast@(BStmt meta block) = do
    return r
 simplifyStatement expr ast@(Incr meta ident) = do
   markTrace expr $ ASTStmt meta ast
-  rVal <- return $ SimplifiedCall (SimplifiedVariable $ Ident "++") (SimplifiedVariable ident)
+  rVal <- return $ SimplifiedCall (SimplifiedVariable TypeMetaNone $ Ident "++") (SimplifiedVariable (extractMeta meta) ident)
   r <- return $ SimplifiedLet ident (extractMeta meta) rVal expr
   r <- addExprAnnot $ return r
   unmarkTrace expr ast
@@ -289,30 +289,30 @@ simplifyExpr e expr = do
 
 
 simplifyExpr_ :: Expr ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
-simplifyExpr_ (EVar _ name) _ = return $ SimplifiedVariable name
+simplifyExpr_ (EVar meta name) _ = return $ SimplifiedVariable (extractMeta meta) name
 simplifyExpr_ (ELitInt _ val) _ = return $ SimplifiedConstInt val
 simplifyExpr_ (EString _ val) _ = return $ SimplifiedConstString val
 simplifyExpr_ (ELitTrue _) _ = return $ SimplifiedConstBool True
 simplifyExpr_ (ELitFalse _) _ = return $ SimplifiedConstBool False
-simplifyExpr_ (Neg _ expr) e = do
+simplifyExpr_ (Neg meta expr) e = do
   e <- simplifyExpr expr e
-  createNameCall "neg" [e]
-simplifyExpr_ (Not _ expr) e = do
+  createNameCall (extractMeta meta) "neg" [e]
+simplifyExpr_ (Not meta expr) e = do
   e <- simplifyExpr expr e
-  createNameCall "not" [e]
-simplifyExpr_ (EMul _ expr1 op expr2) e = do
+  createNameCall (extractMeta meta) "not" [e]
+simplifyExpr_ (EMul meta expr1 op expr2) e = do
   e1 <- simplifyExpr expr1 e
   e2 <- simplifyExpr expr2 e
-  createNameCall (getMulOpName op) [e1, e2]
-simplifyExpr_ (ERel _ expr1 op expr2) e = do
+  createNameCall (extractMeta meta) (getMulOpName op) [e1, e2]
+simplifyExpr_ (ERel meta expr1 op expr2) e = do
   e1 <- simplifyExpr expr1 e
   e2 <- simplifyExpr expr2 e
-  createNameCall (getRelOpName op) [e1, e2]
-simplifyExpr_ (EAdd _ expr1 op expr2) e = do
+  createNameCall (extractMeta meta) (getRelOpName op) [e1, e2]
+simplifyExpr_ (EAdd meta expr1 op expr2) e = do
   e1 <- simplifyExpr expr1 e
   e2 <- simplifyExpr expr2 e
-  createNameCall (getAddOpName op) [e1, e2]
-simplifyExpr_ (EApp _ (Ident name) exprs) e = do
+  createNameCall (extractMeta meta) (getAddOpName op) [e1, e2]
+simplifyExpr_ (EApp meta (Ident name) exprs) e = do
   exprsSimpl <- mapM (\expr -> simplifyExpr expr e) exprs
   args <- getAppArgs exprsSimpl
-  createNameCall name args
+  createNameCall (extractMeta meta) name args

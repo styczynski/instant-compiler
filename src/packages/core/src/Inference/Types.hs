@@ -31,7 +31,7 @@ data TypeEnvironment = TypeEnvironment { types :: Map.Map Ident Scheme }
 
 data TypeAnnotation = AnnotationEnv TypeEnvironment deriving (Show, Eq)
 
-data TypeMeta = TypeMetaNone | TypeMeta Int deriving (Show, Eq)
+data TypeMeta = TypeMetaNone | TypeMeta [Int] deriving (Show, Eq)
 
 -- | Data types for inference
 data Type
@@ -45,6 +45,45 @@ data Type
   | TypePoly TypeMeta [Type]
   | TypeAnnotated TypeMeta TypeAnnotation
   deriving (Show, Eq)
+
+getTypeMeta :: Type -> TypeMeta
+getTypeMeta v = case v of
+  TypeVar m _ -> m
+  TypeStatic m _ -> m
+  TypeArrow m _ _ -> m
+  TypeList m _ -> m
+  TypeTuple m _ _ -> m
+  TypeUnit m -> m
+  TypeComplex m _ _ -> m
+  TypePoly m _ -> m
+  TypeAnnotated m _ -> m
+
+joinMetaEx :: Bool -> TypeMeta -> TypeMeta -> TypeMeta
+joinMetaEx _ TypeMetaNone x = x
+joinMetaEx mode x TypeMetaNone = if mode then TypeMetaNone else x
+joinMetaEx mode (TypeMeta a) v@(TypeMeta b) = if mode then v else TypeMeta $ a ++ b
+joinMetaEx mode _ m = if mode then m else TypeMetaNone
+
+joinMeta :: TypeMeta -> TypeMeta -> TypeMeta
+joinMeta = joinMetaEx False
+
+withMetaEx :: Bool -> Type -> TypeMeta -> Type
+withMetaEx mode v m = case v of
+  TypeVar m0 a -> TypeVar (joinMetaEx mode m0 m) a
+  TypeStatic m0 a -> TypeStatic (joinMetaEx mode m0 m) a
+  TypeArrow m0 a b -> TypeArrow (joinMetaEx mode m0 m) a b
+  TypeList m0 a -> TypeList (joinMetaEx mode m0 m) a
+  TypeTuple m0 a b -> TypeTuple (joinMetaEx mode m0 m) a b
+  TypeUnit m0 -> TypeUnit (joinMetaEx mode m0 m)
+  TypeComplex m0 a b -> TypeComplex (joinMetaEx mode m0 m) a b
+  TypePoly m0 a -> TypePoly (joinMetaEx mode m0 m) a
+  TypeAnnotated m0 a -> TypeAnnotated (joinMetaEx mode m0 m) a
+
+withMeta :: Type -> TypeMeta -> Type
+withMeta = withMetaEx False
+
+clearMeta :: Type -> Type
+clearMeta v = withMetaEx True v TypeMetaNone
 
 -- | Type scheme
 data Scheme = Scheme [TypeVar] Type

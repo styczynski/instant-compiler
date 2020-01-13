@@ -60,7 +60,8 @@ data (AST r t) => InferState r t = InferState {
   tCount :: Int,
   tagMap :: Map.Map String Int,
   inferTrace :: [TypeErrorPayload t],
-  root :: r
+  root :: r,
+  typeMap :: Map.Map Int String
 } deriving (Show)
 
 -- | Base typechecking errors
@@ -75,15 +76,15 @@ data (AST r t) => TypeError r t
 
 -- | Simplified AST representation
 data (AST r t) => SimplifiedExpr r t
-  = SimplifiedVariable Ident
+  = SimplifiedVariable TypeMeta Ident
   | SimplifiedCall (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedFunction Ident (SimplifiedExpr r t)
   | SimplifiedLet Ident TypeMeta (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedLetAs Ident TypeMeta (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedIf (SimplifiedExpr r t) (SimplifiedExpr r t) (SimplifiedExpr r t)
   | SimplifiedFixPoint (SimplifiedExpr r t)
-  | SimplifiedBinaryOp BinaryOp (SimplifiedExpr r t) (SimplifiedExpr r t)
-  | SimplifiedUnaryOp UnaryOp (SimplifiedExpr r t)
+  | SimplifiedBinaryOp BinaryOp TypeMeta (SimplifiedExpr r t) (SimplifiedExpr r t)
+  | SimplifiedUnaryOp UnaryOp TypeMeta (SimplifiedExpr r t)
   | SimplifiedSkip
   | SimplifiedCheck (SimplifiedExpr r t) Scheme
   | SimplifiedExportEnv

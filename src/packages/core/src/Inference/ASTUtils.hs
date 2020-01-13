@@ -34,8 +34,8 @@ createCall :: (AST r t) => (SimplifiedExpr r t) -> [(SimplifiedExpr r t)] -> Inf
 createCall fn args = do
   foldM (\acc arg -> return $ SimplifiedCall acc arg) fn args
 
-createNameCall :: (AST r t) => String -> [(SimplifiedExpr r t)] -> Infer r t (SimplifiedExpr r t)
-createNameCall name args = createCall (SimplifiedVariable $ Ident name) args
+createNameCall :: (AST r t) => TypeMeta -> String -> [(SimplifiedExpr r t)] -> Infer r t (SimplifiedExpr r t)
+createNameCall meta name args = createCall (SimplifiedVariable meta $ Ident name) args
 
 getLambdaArgs :: [(String, String)] -> [String]
 getLambdaArgs [] = ["Void"]

@@ -51,7 +51,10 @@ runInfer env state fn = do
   v <- runExceptT (runReaderT (runStateT fn (state)) (env))
   case v of
     (Left  e                   ) -> return $ Left e
-    (Right ((env, t, c), state)) -> return $ Right ((env, t, c), state)
+    (Right ((env, t, c), state)) -> do
+      _ <- liftIO $ putStrLn $ "End of inference"
+      _ <- liftIO $ putStrLn $ show $ typeMap state
+      return $ Right ((env, t, c), state)
 
 -- | Runs solver monad
 solve
@@ -170,8 +173,9 @@ infer (SimplifiedCheck e (Scheme _ t)) = do
   bindExpr1     <- type1 <.> t
   ac       <- constraintAnnoTypeList [bindExpr1]
   return (type1, constraintype1 ++ ac)
-infer (SimplifiedVariable x) = do
+infer (SimplifiedVariable meta x) = do
   t <- lookupEnv x
+  t <- return $ withMeta t meta
   return (t, [])
 infer (SimplifiedFunction x e) = do
   typeVar     <- freshTypeVar
@@ -183,6 +187,8 @@ infer (SimplifiedCall e1 e2) = do
   typeVar       <- freshTypeVar
   bindExpr1     <- type1 <.> (TypeArrow TypeMetaNone type2 typeVar)
   ac       <- constraintAnnoTypeList [bindExpr1]
+  --typeVar <- return $ withMeta typeVar $ joinMeta (getTypeMeta type1) (getTypeMeta type2)
+  --typeRemember typeVar
   return (typeVar, constraintype1 ++ constraintype2 ++ ac)
 infer (SimplifiedLetAs x meta e1 _ e2) = do
   (gt, gc) <- infer (SimplifiedLet x meta e1 e2)
@@ -202,13 +208,17 @@ infer (SimplifiedLetAs x meta e1 _ e2) = do
 infer (SimplifiedLet x meta e1 e2) = do
   env      <- ask
   (type1, constraintype1) <- infer e1
+  type1 <- return $ withMeta type1 meta
+  typeRemember type1
   s        <- lift $ lift $ lift $ runSolve constraintype1
   case s of
     Left  err -> throwError err
     Right sub -> do
       let sc = Scheme (generalized (sub .> env) (sub .> type1)) (sub .> type1)
       (type2, constraintype2) <- (x, sc) ==> (local (sub .>) (infer e2))
-      _ <- liftIO $ putStrLn $ "Infer let: [" ++ (show meta) ++ "] -> " ++ (show type2)
+      -- _ <- liftIO $ putStrLn $ "Infer let: [" ++ (show meta) ++ "] -> " ++ (show type2)
+      type2 <- return $ withMeta type2 meta
+      typeRemember type2
       return (type2, constraintype1 ++ constraintype2)
 infer (SimplifiedFixPoint e1) = do
   (type1, constraintype1) <- infer e1
@@ -216,9 +226,9 @@ infer (SimplifiedFixPoint e1) = do
   bindExpr1     <- (TypeArrow TypeMetaNone typeVar typeVar) <.> type1
   ac       <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
-infer (SimplifiedUnaryOp (OpCustomUni name) e1) = do
-  infer (SimplifiedCall (SimplifiedVariable $ Ident name) e1)
-infer (SimplifiedUnaryOp op e1) = do
+infer (SimplifiedUnaryOp (OpCustomUni name) meta e1) = do
+  infer (SimplifiedCall (SimplifiedVariable meta $ Ident name) e1)
+infer (SimplifiedUnaryOp op _ e1) = do
   (type1, constraintype1) <- infer e1
   typeVar       <- freshTypeVar
   absType1       <- return $ TypeArrow TypeMetaNone type1 typeVar
@@ -226,10 +236,10 @@ infer (SimplifiedUnaryOp op e1) = do
   bindExpr1     <- absType1 <.> absType2
   ac       <- constraintAnnoTypeList [bindExpr1]
   return (typeVar, constraintype1 ++ ac)
-infer (SimplifiedBinaryOp (OpCustom name) e1 e2) = do
+infer (SimplifiedBinaryOp (OpCustom name) meta e1 e2) = do
   infer
-    (SimplifiedCall (SimplifiedCall (SimplifiedVariable $ Ident name) e1) e2)
-infer (SimplifiedBinaryOp op e1 e2) = do
+    (SimplifiedCall (SimplifiedCall (SimplifiedVariable meta $ Ident name) e1) e2)
+infer (SimplifiedBinaryOp op _ e1 e2) = do
   (type1, constraintype1) <- infer e1
   (type2, constraintype2) <- infer e2
   typeVar       <- freshTypeVar
@@ -314,43 +324,53 @@ inferBinaryOperation :: (AST r t) => BinaryOp -> Infer r t Type
 inferBinaryOperation OpSemicolon = do
   typeVar1 <- freshTypeVar
   typeVar2 <- freshTypeVar
-  return $ TypeArrow TypeMetaNone typeVar1 (TypeArrow TypeMetaNone typeVar2 typeVar2)
+  t <- return $ TypeArrow TypeMetaNone typeVar1 (TypeArrow TypeMetaNone typeVar2 typeVar2)
+  return t
 inferBinaryOperation OpSame = do
   typeVar <- freshTypeVar
-  return $ TypeArrow TypeMetaNone typeVar (TypeArrow TypeMetaNone typeVar typeVar)
+  t <- return $ TypeArrow TypeMetaNone typeVar (TypeArrow TypeMetaNone typeVar typeVar)
+  return t
 inferBinaryOperation OpCons = do
   typeVar <- freshTypeVar
-  return $ TypeArrow TypeMetaNone (typeVar) (TypeArrow TypeMetaNone (TypeList TypeMetaNone typeVar) (TypeList TypeMetaNone typeVar))
+  t <- return $ TypeArrow TypeMetaNone (typeVar) (TypeArrow TypeMetaNone (TypeList TypeMetaNone typeVar) (TypeList TypeMetaNone typeVar))
+  return t
 inferBinaryOperation OpTupleCons = do
   typeVar  <- freshTypeVar
   typeVar2 <- freshTypeVar
   typeVar3 <- freshTypeVar
-  return
-    $ TypeArrow TypeMetaNone (typeVar) (TypeArrow TypeMetaNone (TypeTuple TypeMetaNone typeVar2 typeVar3) (TypeTuple TypeMetaNone typeVar (TypeTuple TypeMetaNone typeVar2 typeVar3)))
+  t <- return $ TypeArrow TypeMetaNone (typeVar) (TypeArrow TypeMetaNone (TypeTuple TypeMetaNone typeVar2 typeVar3) (TypeTuple TypeMetaNone typeVar (TypeTuple TypeMetaNone typeVar2 typeVar3)))
+  return t
 
 inferUnaryOperation :: (AST r t) => UnaryOp -> Infer r t Type
 inferUnaryOperation OpHead = do
   typeVar <- freshTypeVar
-  return $ TypeArrow TypeMetaNone  (TypeList TypeMetaNone typeVar) (typeVar)
+  t <- return $ TypeArrow TypeMetaNone  (TypeList TypeMetaNone typeVar) (typeVar)
+  return t
 inferUnaryOperation OpTails = do
   typeVar <- freshTypeVar
-  return $ TypeArrow TypeMetaNone  (TypeList TypeMetaNone typeVar) (TypeList TypeMetaNone typeVar)
+  t <- return $ TypeArrow TypeMetaNone  (TypeList TypeMetaNone typeVar) (TypeList TypeMetaNone typeVar)
+  return t
 inferUnaryOperation OpEmptyList = do
   typeVar  <- freshTypeVar
   typeVar2 <- freshTypeVar
-  return $ TypeArrow TypeMetaNone typeVar (TypeList TypeMetaNone typeVar2)
+  t <- return $ TypeArrow TypeMetaNone typeVar (TypeList TypeMetaNone typeVar2)
+  return t
 inferUnaryOperation OpEmptyTuple = do
   typeVar <- freshTypeVar
-  return $ TypeArrow TypeMetaNone typeVar (TypeTuple TypeMetaNone (TypeUnit TypeMetaNone) (TypeUnit TypeMetaNone))
+  t <- return $ TypeArrow TypeMetaNone typeVar (TypeTuple TypeMetaNone (TypeUnit TypeMetaNone) (TypeUnit TypeMetaNone))
+  return t
 inferUnaryOperation OpListNth = do
   typeVar <- freshTypeVar
-  return $ TypeArrow TypeMetaNone (TypeList TypeMetaNone typeVar) typeVar
+  t <- return $ TypeArrow TypeMetaNone (TypeList TypeMetaNone typeVar) typeVar
+  return t
 inferUnaryOperation (OpTupleNth index len) = do
   (tupleType, elsTypes) <- foldrM
     (\_ (tup, typeVars) -> do
       typeVar <- freshTypeVar
-      return $ ((TypeTuple TypeMetaNone typeVar tup), [typeVar] ++ typeVars)
+      t <- return $ TypeTuple TypeMetaNone typeVar tup
+      return (t, [typeVar] ++ typeVars)
     )
     ((TypeTuple TypeMetaNone (TypeUnit TypeMetaNone) (TypeUnit TypeMetaNone)), [])
     (replicate len 0)
-  return $ TypeArrow TypeMetaNone (tupleType) (elsTypes !! index)
+  t <- return $ TypeArrow TypeMetaNone (tupleType) (elsTypes !! index)
+  return t

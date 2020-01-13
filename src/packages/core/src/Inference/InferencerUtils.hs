@@ -44,6 +44,18 @@ addExprAnnot inExpr = do
   e <- inExpr
   return $ SimplifiedAnnotated inferTraceTop e
 
+typeRemember :: (AST r t) => Type -> Infer r t ()
+typeRemember t = do
+  meta <- return $ getTypeMeta t
+  case meta of
+    (TypeMetaNone) -> return ()
+    (TypeMeta ids) -> do
+      env <- get
+      newTypeMap <- return $ foldl (\acc id -> Map.insertWith (\_ old -> old) id (schemeToStr $ Scheme [] t) acc) (typeMap env) ids
+      _ <- liftIO $ putStrLn $ "Now: " ++ (show ids) ++ " -> " ++ (schemeToStr $ Scheme [] t)
+      put $ env { typeMap = newTypeMap }
+      return ()
+
 -- | Adds new inference trace node (for debugging purposes)
 markTrace :: (AST r t) => (SimplifiedExpr r t) -> t -> Infer r t ()
 markTrace expr a = do
