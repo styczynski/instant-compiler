@@ -224,9 +224,9 @@ simplifyStatement expr ast@(Ret meta retExpr) = do
   return r
 
 getTypeDefaultValue :: (AST r t) => TypeName ASTMetadata -> (SimplifiedExpr r t)
-getTypeDefaultValue (Int _) = SimplifiedConstInt 0
-getTypeDefaultValue (Str _) = SimplifiedConstString ""
-getTypeDefaultValue (Bool _) = SimplifiedConstBool False
+getTypeDefaultValue (Int meta) = SimplifiedConstInt (extractMeta meta) 0
+getTypeDefaultValue (Str meta) = SimplifiedConstString (extractMeta meta) ""
+getTypeDefaultValue (Bool meta) = SimplifiedConstBool (extractMeta meta) False
 
 getTypeName :: TypeName ASTMetadata -> String
 getTypeName (Int _) = "Int"
@@ -290,10 +290,10 @@ simplifyExpr e expr = do
 
 simplifyExpr_ :: Expr ASTMetadata -> (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata)) -> Infer (Program ASTMetadata) (ASTNode ASTMetadata) (SimplifiedExpr (Program ASTMetadata) (ASTNode ASTMetadata))
 simplifyExpr_ (EVar meta name) _ = return $ SimplifiedVariable (extractMeta meta) name
-simplifyExpr_ (ELitInt _ val) _ = return $ SimplifiedConstInt val
-simplifyExpr_ (EString _ val) _ = return $ SimplifiedConstString val
-simplifyExpr_ (ELitTrue _) _ = return $ SimplifiedConstBool True
-simplifyExpr_ (ELitFalse _) _ = return $ SimplifiedConstBool False
+simplifyExpr_ (ELitInt meta val) _ = return $ SimplifiedConstInt (extractMeta meta) val
+simplifyExpr_ (EString meta val) _ = return $ SimplifiedConstString (extractMeta meta) val
+simplifyExpr_ (ELitTrue meta) _ = return $ SimplifiedConstBool (extractMeta meta) True
+simplifyExpr_ (ELitFalse meta) _ = return $ SimplifiedConstBool (extractMeta meta) False
 simplifyExpr_ (Neg meta expr) e = do
   e <- simplifyExpr expr e
   createNameCall (extractMeta meta) "neg" [e]

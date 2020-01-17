@@ -50,7 +50,20 @@ class (Show t, Show r) => AST r t | r -> t where
 data TypeErrorPayload t = EmptyPayload | TypeErrorPayload t deriving (Show, Eq)
 
 -- | Type constraints with error payload annotation and unifier for types
-data (AST r t) => TypeConstraint r t = TypeConstraint [TypeErrorPayload t] (Type, Type) deriving (Show)
+data (AST r t) => TypeConstraint r t = TypeConstraint [TypeErrorPayload t] (Type, Type)
+
+instance (AST r t) => Show (TypeConstraint r t) where
+  show (TypeConstraint _ (t1, t2)) = "{ " ++ (show t1) ++ " == " ++ (show t2) ++ " }"
+
+data TypeASTMap = TypeASTMap (Map.Map Int Type) deriving (Eq)
+getMapFromTypeASTMap :: TypeASTMap -> Map.Map Int Type
+getMapFromTypeASTMap (TypeASTMap m) = m
+
+instance Show TypeASTMap where
+  show (TypeASTMap m) =
+    foldl (\acc (k, v) ->
+      (if acc == "" then "" else acc ++ "\n") ++ (show k) ++ " => " ++ (show v)) "" (Map.toList m)
+
 data (AST r t) => TypeUnifier r t = NoUnifier | TypeUnifier [TypeConstraint r t] TypeSubstitution
 -- | Base inference monad and state
 type Infer r t
@@ -61,7 +74,7 @@ data (AST r t) => InferState r t = InferState {
   tagMap :: Map.Map String Int,
   inferTrace :: [TypeErrorPayload t],
   root :: r,
-  typeMap :: Map.Map Int String
+  typeMap :: TypeASTMap
 } deriving (Show)
 
 -- | Base typechecking errors
@@ -90,9 +103,9 @@ data (AST r t) => SimplifiedExpr r t
   | SimplifiedExportEnv
   | SimplifiedTyped Scheme
   | SimplifiedAnnotated [TypeErrorPayload t] (SimplifiedExpr r t)
-  | SimplifiedConstBool Bool
-  | SimplifiedConstInt Integer
-  | SimplifiedConstString String
+  | SimplifiedConstBool TypeMeta Bool
+  | SimplifiedConstInt TypeMeta Integer
+  | SimplifiedConstString TypeMeta String
   | SimplifiedTag Ident (SimplifiedExpr r t)
   | SimplifiedTagUnpack Ident (SimplifiedExpr r t)
   | SimplifiedTagUnpackNonStrict Ident (SimplifiedExpr r t)

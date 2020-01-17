@@ -96,7 +96,7 @@ instance (AST r t) => BindableSolve r t TypeVar Type where
 
 -- | This instance represents binding type to type (unification)
 instance (AST r t) => BindableSolve r t Type Type where
-  (<-$->) typeArgA typeArgB | (clearMeta typeArgA) == (clearMeta typeArgB)                    = return emptySubst
+  (<-$->) typeArgA typeArgB | typeArgA == typeArgB                 = return emptySubst
   (<-$->) (TypeVar _ v)       t                 = v <-$-> t
   (<-$->) t                 (TypeVar  _ v     ) = v <-$-> t
   (<-$->) (TypeList _ typeArgA    ) (TypeList _ typeArgB    ) = [typeArgA] <-$-> [typeArgB]

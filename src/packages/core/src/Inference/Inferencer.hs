@@ -52,8 +52,11 @@ runInfer env state fn = do
   case v of
     (Left  e                   ) -> return $ Left e
     (Right ((env, t, c), state)) -> do
-      _ <- liftIO $ putStrLn $ "End of inference"
-      _ <- liftIO $ putStrLn $ show $ typeMap state
+--      _ <- liftIO $ putStrLn $ "End of inference"
+--      _ <- liftIO $ putStrLn $ "Env:"
+--      _ <- liftIO $ putStrLn $ show env
+      _ <- liftIO $ putStrLn $ "Constraints:"
+      _ <- liftIO $ putStrLn $ show c
       return $ Right ((env, t, c), state)
 
 -- | Runs solver monad
@@ -79,6 +82,23 @@ unpackEnvTypeContraints
 unpackEnvTypeContraints (Left  r             ) = Left r
 unpackEnvTypeContraints (Right ((_, t, c), _)) = Right (t, c)
 
+resolveTypeRef :: TypeSubstitution -> Type -> Type
+--resolveTypeRef c t = foldl (\a (TypeConstraint _ (t1, t2)) -> if t == t1 then t2 else (if t == t2 then t1 else a)) t c
+resolveTypeRef subst t = subst .> t
+
+resolveTypeRefMap
+  :: (AST r t) => Either (TypeError r t) ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t)
+    -> IO (Either (TypeError r t) ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t))
+resolveTypeRefMap i = do
+  -- Either (TypeError r t) (Type, [TypeConstraint r t])
+  case i of
+    (Left _) -> return i
+    (Right ((env, t, c), state)) -> do
+      (Right subst) <- runSolve c
+      state2 <- return $ state { typeMap = TypeASTMap (Map.map (\t -> resolveTypeRef subst t) (getMapFromTypeASTMap $ typeMap state)) }
+      return $ Right ((env, t, c), state2)
+
+
 -- | Helper to extract environment from inference monad output
 retrieveEnv
   :: (AST r t) => Either (TypeError r t) ((TypeEnvironment, Type, [TypeConstraint r t]), InferState r t)
@@ -101,9 +121,12 @@ inferAST
   -> IO (Either (TypeError r t) (Scheme, TypeEnvironment, InferState r t))
 inferAST env state ex = do
   i      <- runInfer env state (inferProgram ex)
+  i      <- resolveTypeRefMap i
   env    <- return $ retrieveEnv i
   state  <- return $ retrieveState i
   scheme <- solve $ unpackEnvTypeContraints i
+  _ <- liftIO $ putStrLn $ "Type:"
+  _ <- liftIO $ putStrLn $ show $ typeMap state
   case scheme of
     Left  e -> return $ Left e
     Right s -> return $ Right (s, env, state)
@@ -155,11 +178,26 @@ inferE expr = do
   p <- errPayload
   return $ TypeConstraint p (type1, type2)
 
+rememberMeta :: (AST r t) => (Type, [TypeConstraint r t]) -> TypeMeta -> Infer r t (Type, [TypeConstraint r t])
+rememberMeta (type1, constraintype1) meta = do
+  typeVar       <- freshTypeVar
+  bindExpr1     <- type1 <.> typeVar
+  ac       <- constraintAnnoTypeList [bindExpr1]
+  type1 <- return $ withMeta type1 meta
+  typeRemember "rememberMeta" type1
+  return (type1, constraintype1 ++ ac)
+
 infer :: (AST r t) => SimplifiedExpr r t -> Infer r t (Type, [TypeConstraint r t])
 infer SimplifiedSkip            = return ((TypeStatic TypeMetaNone "Void"), [])
-infer (SimplifiedConstInt    _) = return ((TypeStatic TypeMetaNone "Int"), [])
-infer (SimplifiedConstBool   _) = return ((TypeStatic TypeMetaNone "Bool"), [])
-infer (SimplifiedConstString _) = return ((TypeStatic TypeMetaNone "String"), [])
+infer (SimplifiedConstInt    meta _) = do
+  c <- return ((TypeStatic meta "Int"), [])
+  rememberMeta c meta
+infer (SimplifiedConstBool   meta _) = do
+  c <- return ((TypeStatic meta "Bool"), [])
+  rememberMeta c meta
+infer (SimplifiedConstString meta _) = do
+  c <- return ((TypeStatic meta "String"), [])
+  rememberMeta c meta
 infer (SimplifiedAnnotated l t) = do
   s <- get
   put s { inferTrace = l }
@@ -175,8 +213,8 @@ infer (SimplifiedCheck e (Scheme _ t)) = do
   return (type1, constraintype1 ++ ac)
 infer (SimplifiedVariable meta x) = do
   t <- lookupEnv x
-  t <- return $ withMeta t meta
-  return (t, [])
+  c <- return (withMeta t meta, [])
+  rememberMeta c meta
 infer (SimplifiedFunction x e) = do
   typeVar     <- freshTypeVar
   (t, c) <- (x, Scheme [] typeVar) ==> (infer e)
@@ -188,7 +226,7 @@ infer (SimplifiedCall e1 e2) = do
   bindExpr1     <- type1 <.> (TypeArrow TypeMetaNone type2 typeVar)
   ac       <- constraintAnnoTypeList [bindExpr1]
   --typeVar <- return $ withMeta typeVar $ joinMeta (getTypeMeta type1) (getTypeMeta type2)
-  --typeRemember typeVar
+  --typeRemember ("call") typeVar
   return (typeVar, constraintype1 ++ constraintype2 ++ ac)
 infer (SimplifiedLetAs x meta e1 _ e2) = do
   (gt, gc) <- infer (SimplifiedLet x meta e1 e2)
@@ -204,22 +242,19 @@ infer (SimplifiedLetAs x meta e1 _ e2) = do
       let sc = Scheme (generalized (sub .> env) (sub .> type1)) (sub .> type1)
       (type2, constraintype2) <-
         (x, sc) ==> (local (sub .>) (infer (SimplifiedTyped $ Scheme [] typeVar)))
-      return (type2, ac ++ constraintype1 ++ constraintype2)
-infer (SimplifiedLet x meta e1 e2) = do
+      c <- return (type2, ac ++ constraintype1 ++ constraintype2)
+      rememberMeta c meta
+infer e@(SimplifiedLet x meta e1 e2) = do
   env      <- ask
   (type1, constraintype1) <- infer e1
-  type1 <- return $ withMeta type1 meta
-  typeRemember type1
   s        <- lift $ lift $ lift $ runSolve constraintype1
   case s of
     Left  err -> throwError err
     Right sub -> do
       let sc = Scheme (generalized (sub .> env) (sub .> type1)) (sub .> type1)
       (type2, constraintype2) <- (x, sc) ==> (local (sub .>) (infer e2))
-      -- _ <- liftIO $ putStrLn $ "Infer let: [" ++ (show meta) ++ "] -> " ++ (show type2)
-      type2 <- return $ withMeta type2 meta
-      typeRemember type2
-      return (type2, constraintype1 ++ constraintype2)
+      c <- return (type2, constraintype1 ++ constraintype2)
+      rememberMeta c meta
 infer (SimplifiedFixPoint e1) = do
   (type1, constraintype1) <- infer e1
   typeVar       <- freshTypeVar

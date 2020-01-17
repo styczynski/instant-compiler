@@ -44,7 +44,19 @@ data Type
   | TypeComplex TypeMeta String [Type]
   | TypePoly TypeMeta [Type]
   | TypeAnnotated TypeMeta TypeAnnotation
-  deriving (Show, Eq)
+  deriving Show
+
+instance Eq Type where
+  (TypeVar _ v1) == (TypeVar _ v2) = v1 == v2
+  (TypeStatic _ s1) == (TypeStatic _ s2) = s1 == s2
+  (TypeArrow _ ta1 tb1) == (TypeArrow _ ta2 tb2) = (ta1 == ta2) && (tb1 == tb2)
+  (TypeList _ t1) == (TypeList _ t2) = t1 == t2
+  (TypeTuple _ ta1 tb1) == (TypeTuple _ ta2 tb2) = (ta1 == ta2) && (tb1 == tb2)
+  (TypeUnit _) == (TypeUnit _) = True
+  (TypeComplex _ s1 tl1) == (TypeComplex _ s2 tl2) = (s1 == s2) && (tl1 == tl2)
+  (TypePoly _ tl1) == (TypePoly _ tl2) = tl1 == tl2
+  (TypeAnnotated _ a) == (TypeAnnotated _ b) = a == b
+  _ == _ = False
 
 getTypeMeta :: Type -> TypeMeta
 getTypeMeta v = case v of

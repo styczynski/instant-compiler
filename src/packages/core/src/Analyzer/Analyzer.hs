@@ -27,7 +27,7 @@ class (AST r t) => Analyzable r t where
                          , tagMap        = M.empty
                          , inferTrace    = []
                          , root = r
-                         , typeMap = M.empty
+                         , typeMap = TypeASTMap $ M.empty
                          }
   analyzer :: Analyzer r t
   analyzer ast t0 = do
