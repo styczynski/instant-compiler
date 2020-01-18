@@ -1,6 +1,7 @@
 -- | Calling conventions. There are basically only two: System V (Linux, OSX, BSD) and Win64\/fastcall
 
 {-# language NoMonomorphismRestriction #-}
+{-# language FlexibleContexts #-}
 {-# language CPP #-}
 {-# language DataKinds #-}
 module X86.Generator.CallConv where
@@ -9,12 +10,15 @@ import Foreign
 import Data.Monoid
 
 import X86.Generator.Asm
+import X86.Generator.Environment
+import X86.Generator.Registers
+import X86.Generator.LCode
 import X86.Generator.CodeGen
 
 ------------------------------------------------------------------------------
 
 -- helper to call a function
-callFun :: Operand RW S64 -> FunPtr a -> Code
+callFun :: Operand RW S64 -> FunPtr a -> Code LCode CodeLine
 callFun r p = do
   mov r $ fromIntegral $ ptrToIntPtr $ castFunPtrToPtr p
   call r
@@ -29,11 +33,11 @@ callFun r p = do
 -- user (this function won't save them, but you can use "saveR12R15" in 
 -- addition to this).
 --
-saveNonVolatile :: Code -> Code
+saveNonVolatile :: Code LCode CodeLine -> Code LCode CodeLine
 saveNonVolatile code = prologue >> code >> epilogue >> ret
 
 -- | Saves R12, R13, R14 and R15 (on the stack).
-saveR12R15 :: Code -> Code
+saveR12R15 :: Code LCode CodeLine -> Code LCode CodeLine
 saveR12R15 code = do
   push r12
   push r13

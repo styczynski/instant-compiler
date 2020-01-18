@@ -1,6 +1,7 @@
 {-# language NoMonomorphismRestriction #-}
 {-# language ScopedTypeVariables #-}
 {-# language DataKinds #-}
+{-# language FlexibleContexts #-}
 {-# language ForeignFunctionInterface #-}
 {-# language RecursiveDo #-}
 module X86.Generator.Utils where
@@ -16,9 +17,13 @@ import           Control.Monad.Reader
 import           Control.Monad.Writer
 import           Control.Monad.State
 import           Control.Monad.Tardis
+import qualified Data.Map                      as Map
 
 import           X86.Generator.Asm
+import           X86.Generator.LCode
 import           X86.Generator.CodeGen
+import           X86.Generator.Environment
+import           X86.Generator.Registers
 import           X86.Generator.CallConv
 
 -------------------------------------------------------------- derived constructs
@@ -29,6 +34,12 @@ unless cc x = mdo
   x
   l <- label
   return ()
+
+-- | create function
+declFun :: String -> [RegName] -> Code LCode CodeLine -> Code LCode CodeLine
+declFun name args body = do
+  s <- CodeM get
+  CodeM $ put $ incrementLabelPtr s
 
 -- | do while loop construction
 doWhile cc x = do
@@ -60,9 +71,6 @@ foreign import ccall "static stdio.h &printf" printf :: FunPtr a
 
 ------------------------------------------------------------------------------
 -- * utils
-
-mov' :: forall s s' r . IsSize s' => Operand RW s -> Operand r s' -> Code
-mov' a = mov (resizeOperand a :: Operand RW s')
 
 newtype CString = CString String
 
@@ -97,7 +105,7 @@ push_all = sequence_ [ push r | r <- all_regs_except_rsp ]
 {- HLINT ignore pop_all -}
 pop_all = sequence_ [ pop r | r <- reverse all_regs_except_rsp ]
 
-traceReg :: IsSize s => String -> Operand RW s -> Code
+traceReg :: IsSize s => String -> Operand RW s -> Code LCode CodeLine
 traceReg d r = do
   pushf
   push_all
@@ -114,7 +122,7 @@ traceReg d r = do
     S32 -> ""
     S64 -> "l"
 
-allocReg :: FromReg c => CodeM (c S64)
+allocReg :: (BuilderCode c l) => FromReg r => CodeM c l (r S64)
 allocReg = do
   s <- CodeM get
   CodeM $ put $ incrementRegPtr s
