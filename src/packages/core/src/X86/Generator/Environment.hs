@@ -146,7 +146,7 @@ codeByte :: Word8 -> CodeBuilder
 codeByte = codeBytes . (:[])
 
 mkRef :: Size -> Int -> Label -> CodeBuilder
-mkRef s@(sizeLen -> sn) offset (Label l_) = CodeBuilder sn sn $ do
+mkRef s@(sizeValue -> sn) offset (Label l_) = CodeBuilder sn sn $ do
   bs <- lift $ mdo
     (n, ls, ps) <- getPast
     sendFuture (n + sn, ls, ps')
@@ -186,7 +186,7 @@ mkAutoRef ss (Label l_) = CodeBuilder (minimum sizes) (maximum sizes) $ do
         z = g ss
 
         g [] = error $ show vx ++ " does not fit into auto size"
-        g ((s, c): ss) = case (s, vx - length c - sizeLen s) of
+        g ((s, c): ss) = case (s, vx - length c - sizeValue s) of
           (Size8B,  Integral j) -> c <> toBytes (j :: Int8)
           (Size32B, Integral j) -> c <> toBytes (j :: Int32)
           _ -> g ss
@@ -195,7 +195,7 @@ mkAutoRef ss (Label l_) = CodeBuilder (minimum sizes) (maximum sizes) $ do
           | l < 0 = (length z, z, ps)
           | otherwise = (nz, z', ins l (s, n + length z', - n - nz) ps)
 
-        nz = length z' + sizeLen s
+        nz = length z' + sizeValue s
         ma' = mls !! l
         vx' = ma - ma'
         (z', s) = g' ss
@@ -210,7 +210,7 @@ mkAutoRef ss (Label l_) = CodeBuilder (minimum sizes) (maximum sizes) $ do
     return $ zip [n..] bs
   tell $ Right <$> bs
   where
-  sizes = map (\(s, c) -> sizeLen s + length c) ss
+  sizes = map (\(s, c) -> sizeValue s + length c) ss
 
 -- prebuild code
 preBuild :: (BuilderCode c l) => Code c l -> Code c l

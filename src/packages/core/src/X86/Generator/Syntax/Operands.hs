@@ -33,16 +33,72 @@ import X86.Generator.Syntax.Bytes
 import X86.Generator.Syntax.Sizes
 import X86.Generator.Syntax.Scale
 import X86.Generator.Syntax.Utils
+import X86.Generator.Syntax.Registers
+
+data Immediate a
+  = Immediate a
+  | LabelRelValue Size{-size hint-} Label
+
+-- Type of labels
+newtype Label = Label {unLabel :: Int}
+
+-- | Operand access modes
+data AccessMode
+  = AccessReadOnly     -- ^ readable operand
+  | AccessReadWrite    -- ^ readable and writeable operand
 
 -- | An operand can be an immediate, a register, a memory address or RIP-relative (memory address relative to the instruction pointer)
 data Operand :: AccessMode -> Size -> * where
   ImmOp     :: Immediate Int64 -> Operand AccessReadOnly s
   RegOp     :: Reg s -> Operand rw s
-  MemOp     :: WithTypedSize s' => Addr s' -> Operand rw s
+  MemOp     :: WithTypedSize s' => RelativeAddress s' -> Operand rw s
   IPMemOp   :: Immediate Int32 -> Operand rw s
 
+instance Show a => Show (Immediate a) where
+  show (Immediate x) = show x
+  show (LabelRelValue s x) = show x
+
+instance Show Label where
+  show (Label i) = ".l" ++ show i
+
+instance FromReg (Operand r) where
+  fromReg = RegOp
+
+instance WithTypedSize s => Show (Operand a s) where
+  show = \case
+    ImmOp w       -> show w
+    RegOp r       -> show r
+    r@(MemOp   a) -> show (size r) ++ " [" ++ show a ++ "]"
+    r@(IPMemOp x) -> show (size r) ++ " [" ++ "rel " ++ show x ++ "]"
+   where
+    showp x | x < 0 = " - " ++ show (-x)
+    showp x         = " + " ++ show x
+
+instance WithTypedSize s => HasSize (Operand a s) where
+  size _ = size (getSizeOf :: TypedSize s)
+
+instance (rw ~ AccessReadOnly) => Num (Operand rw s) where
+  negate (ImmOp (Immediate x)) = ImmOp $ Immediate $ negate x
+  fromInteger (Integral x) = ImmOp $ Immediate x
+  fromInteger z = error $ show z ++ " does not fit into " -- ++ show s
+  (+) = error "(+) @Operand"
+  (-) = error "(-) @Operand"
+  (*) = error "(*) @Operand"
+  abs = error "abs @Operand"
+  signum = error "signum @Operand"
+
+-- | intruction pointer (RIP) relative address
+ipRel :: Label -> Operand rw s
+ipRel l = IPMemOp $ LabelRelValue Size32B l
+
+ipRelValue l = ImmOp $ LabelRelValue Size32B l
+
+-- | `ipRel` with specialized type
+ipRel8 :: Label -> Operand rw Size8B
+ipRel8 = ipRel
+
 addr :: WithTypedSize s => Address s -> Operand rw s'
-addr = MemOp . makeAddr
+addr = MemOp . makeRelativeAddress
 
 -- | `addr` with specialized type
 addr8 :: WithTypedSize s => Address s -> Operand rw Size8B
@@ -59,225 +115,6 @@ addr32 = addr
 -- | `addr` with specialized type
 addr64 :: WithTypedSize s => Address s -> Operand rw Size64B
 addr64 = addr
-
-data Immediate a
-  = Immediate a
-  | LabelRelValue Size{-size hint-} Label
-
--- Type of labels
-newtype Label = Label {unLabel :: Int}
-
-instance Show Label where
-  show (Label i) = ".l" ++ show i
-
--- | Operand access modes
-data AccessMode
-  = AccessReadOnly     -- ^ readable operand
-  | AccessReadWrite    -- ^ readable and writeable operand
-
--- | Register name.
-data RegName = RegName String | RegUnallocated String | RegNameUnknown
-deriving instance Eq (RegName)
-deriving instance Ord (RegName)
-
-instance Show RegName where
-  show (RegName name) = name
-  show (RegUnallocated id) = "<unallocated:" ++ show id ++ ">"
-  show RegNameUnknown = "<?>"
-
--- | A register.
-data Reg :: Size -> * where
-  NormalReg :: RegName -> Word8 -> Reg s      -- \"normal\" registers are for example @AL@, @BX@, @ECX@ or @RSI@
-  HighReg   :: RegName -> Word8 -> Reg Size8B     -- \"high\" registers are @AH@, @BH@, @CH@ etc
-  XMM       :: RegName -> Word8 -> Reg Size128B   -- XMM registers
-
-deriving instance Eq (Reg s)
-deriving instance Ord (Reg s)
-
--- | A (relative) address is made up base a base register, a displacement, and a (scaled) index.
--- For example in @[eax+4*ecx+20]@ the base register is @eax@, the displacement is @20@ and the
--- index is @4*ecx@.
-data Addr s = Addr
-  { baseReg        :: BaseReg s
-  , displacement   :: Displacement
-  , indexReg       :: IndexReg s
-  }
-  deriving (Eq)
-
-type BaseReg s = Maybe (Reg s)
-
-data IndexReg s = NoIndex | IndexReg Scale (Reg s)
-  deriving (Eq)
-
-type Displacement = Maybe Int32
-
-pattern NoDisp = Nothing
-pattern Disp a = Just a
-
--- | intruction pointer (RIP) relative address
-ipRel :: Label -> Operand rw s
-ipRel l = IPMemOp $ LabelRelValue Size32B l
-
-ipRelValue l = ImmOp $ LabelRelValue Size32B l
-
--- | `ipRel` with specialized type
-ipRel8 :: Label -> Operand rw Size8B
-ipRel8 = ipRel
-
-instance WithTypedSize s => Show (Reg s) where
-  show (XMM _ i) = "xmm" ++ show i
-  show (HighReg _ i) =
-    (["ah", " ch", "dh", "bh"] ++ repeat (error ("show @Reg")))
-      !! fromIntegral i
-
-  show r@(NormalReg _ i) =
-    (!! fromIntegral i) . (++ repeat (error ("show @Reg"))) $ case size r of
-      Size8B ->
-        ["al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil"] ++ map (++ "b") r8
-      Size16B -> r0 ++ map (++ "w") r8
-      Size32B -> map ('e' :) r0 ++ map (++ "d") r8
-      Size64B -> map ('r' :) r0 ++ r8
-   where
-    r0 = ["ax", "cx", "dx", "bx", "sp", "bp", "si", "di"]
-    r8 = ["r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"]
-
-instance WithTypedSize s => Show (Addr s) where
-  show (Addr b d i) = showSum $ shb b ++ shd d ++ shi i
-   where
-    shb Nothing  = []
-    shb (Just x) = [(True, show x)]
-    shd NoDisp   = []
-    shd (Disp x) = [(signum x /= (-1), show (abs x))]
-    shi NoIndex         = []
-    shi (IndexReg sc x) = [(True, show' (getScaleFactor sc) ++ show x)]
-    show' 1 = ""
-    show' n = show n ++ " * "
-    showSum []                = "0"
-    showSum ((True , x) : xs) = x ++ g xs
-    showSum ((False, x) : xs) = "-" ++ x ++ g xs
-    g = concatMap (\(a, b) -> f a ++ b)
-    f True  = " + "
-    f False = " - "
-
-instance WithTypedSize s => Show (Operand a s) where
-  show = \case
-    ImmOp w       -> show w
-    RegOp r       -> show r
-    r@(MemOp   a) -> show (size r) ++ " [" ++ show a ++ "]"
-    r@(IPMemOp x) -> show (size r) ++ " [" ++ "rel " ++ show x ++ "]"
-   where
-    showp x | x < 0 = " - " ++ show (-x)
-    showp x         = " + " ++ show x
-
-instance Show a => Show (Immediate a) where
-  show (Immediate x) = show x
-  show (LabelRelValue s x) = show x
-
-instance WithTypedSize s => HasSize (Operand a s) where
-  size _ = size (getSizeOf :: TypedSize s)
-
-instance WithTypedSize s => HasSize (Addr s) where
-  size _ = size (getSizeOf :: TypedSize s)
-
-instance WithTypedSize s => HasSize (Address s) where
-  size _ = size (getSizeOf :: TypedSize s)
-
-instance WithTypedSize s => HasSize (BaseReg s) where
-  size _ = size (getSizeOf :: TypedSize s)
-
-instance WithTypedSize s => HasSize (Reg s) where
-  size _ = size (getSizeOf :: TypedSize s)
-
-instance WithTypedSize s => HasSize (IndexReg s) where
-  size _ = size (getSizeOf :: TypedSize s)
-
-instance (rw ~ AccessReadOnly) => Num (Operand rw s) where
-  negate (ImmOp (Immediate x)) = ImmOp $ Immediate $ negate x
-  fromInteger (Integral x) = ImmOp $ Immediate x
-  fromInteger z = error $ show z ++ " does not fit into " -- ++ show s
-  (+) = error "(+) @Operand"
-  (-) = error "(-) @Operand"
-  (*) = error "(*) @Operand"
-  abs = error "abs @Operand"
-  signum = error "signum @Operand"
-
-instance Semigroup (Addr s) where
-  Addr a b c <> Addr a' b' c' = Addr (getFirst $ First a <> First a') (getFirst $ First b <> First b') (c <> c')
-
-instance Semigroup (IndexReg s) where
-  i <> NoIndex = i
-  NoIndex <> i = i
-
-instance Monoid (Addr s) where
-  mempty = Addr (getFirst mempty) (getFirst mempty) mempty
-
-instance Monoid (IndexReg s) where
-  mempty = NoIndex
-
-base :: Reg s -> Addr s
-base x = Addr (Just x) NoDisp NoIndex
-
-index :: Scale -> Reg s -> Addr s
-index sc x = Addr Nothing NoDisp (IndexReg sc x)
-
-index' :: Int -> Reg s -> Addr s
-index' sc x = Addr Nothing NoDisp (IndexReg (toScale sc) x)
-
-index1 = index s1
-index2 = index s2
-index4 = index s4
-index8 = index s8
-
-disp :: (Bits a, Integral a) => a -> Addr s
-disp (Integral x)
-  | x == 0 = mempty
-  | otherwise = Addr Nothing (Disp x) NoIndex
-
-data Address :: Size -> * where
-  Address :: [(Int, Reg s)] -> Int -> Address s
-
-scaleAddress :: (Int -> Int) -> Address s -> Address s
-scaleAddress f (Address rs d) = Address (first f <$> rs) $ f d
-
-instance Num (Address s) where
-  fromInteger d = Address [] $ fromInteger d
-  negate = scaleAddress negate
-
-  Address [] t * a            = scaleAddress (t *) a
-  a            * Address [] t = scaleAddress (t *) a
-
-  Address rs d + Address rs' d' = Address (f rs rs') (d + d')   where
-    f []              rs                  = rs
-    f rs              []                  = rs
-    f (p@(t, r) : rs) (p'@(t', r') : rs') = case compare r r' of
-      LT -> p : f rs (p' : rs')
-      GT -> p' : f (p : rs) rs'
-      EQ | t + t' == 0 -> f rs rs'
-         | otherwise   -> (t + t', r) : f rs rs'
-
-  abs    = error "abs @Address"
-  signum = error "signum @Address"
-
-makeAddr :: Address s -> Addr s
-makeAddr (Address [(1, r)] d) = base r <> disp d
-makeAddr (Address [(t, r)] d) = index' t r <> disp d
-makeAddr (Address [(1, r), (1, r'@(NormalReg _ 0x4))] d) = base r' <> index1 r <> disp d
-makeAddr (Address [(1, r), (t, r')] d) = base r <> index' t r' <> disp d
-makeAddr (Address [(t, r'), (1, r)] d) = base r <> index' t r' <> disp d
-
-class FromReg c where
-  fromReg :: Reg s -> c s
-
-instance FromReg Reg where
-  fromReg = id
-
-instance FromReg (Operand r) where
-  fromReg = RegOp
-
-instance FromReg Address where
-  fromReg r = Address [(1, r)] 0
-
-reg a b = fromReg $ NormalReg a b
 
 rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15 :: FromReg c => c Size64B
 rax  = reg (RegName "rax") 0x0

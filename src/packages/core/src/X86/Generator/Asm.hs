@@ -8,3 +8,4 @@ import X86.Generator.Syntax.Scale as Asm
 import X86.Generator.Syntax.Operands as Asm
 import X86.Generator.Syntax.Utils as Asm
 import X86.Generator.Syntax.Registers as Asm
+import X86.Generator.Syntax.RegisterUtils as Asm
