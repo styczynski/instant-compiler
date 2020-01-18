@@ -105,7 +105,7 @@ push_all = sequence_ [ push r | r <- all_regs_except_rsp ]
 {- HLINT ignore pop_all -}
 pop_all = sequence_ [ pop r | r <- reverse all_regs_except_rsp ]
 
-traceReg :: IsSize s => String -> Operand RW s -> Code LCode CodeLine
+traceReg :: WithTypedSize s => String -> Operand RW s -> Code LCode CodeLine
 traceReg d r = do
   pushf
   push_all

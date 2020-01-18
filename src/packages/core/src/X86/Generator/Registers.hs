@@ -22,7 +22,7 @@ import qualified Data.Map                      as Map
 import X86.Generator.Asm
 
 data SReg where
-  SReg :: IsSize s => Reg s -> SReg
+  SReg :: WithTypedSize s => Reg s -> SReg
 
 phisicalReg :: SReg -> Reg S64
 phisicalReg (SReg (HighReg n x)) = NormalReg n x
@@ -31,7 +31,7 @@ phisicalReg (SReg (NormalReg n x)) = NormalReg n x
 isHigh (SReg HighReg{}) = True
 isHigh _ = False
 
-regs :: IsSize s => Operand r s -> [SReg]
+regs :: WithTypedSize s => Operand r s -> [SReg]
 regs = \case
   MemOp (Addr r _ i) -> foldMap (pure . SReg) r ++ case i of NoIndex -> []; IndexReg _ x -> [SReg x]
   RegOp r -> [SReg r]

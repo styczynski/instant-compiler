@@ -37,79 +37,79 @@ import X86.Generator.LCode
 import X86.Generator.Environment
 import X86.Generator.Registers
 
-ret        = createCodeLine Ret_
-nop        = createCodeLine Nop_
-pushf      = createCodeLine PushF_
-popf       = createCodeLine PopF_
-cmc        = createCodeLine Cmc_
-clc        = createCodeLine Clc_
-stc        = createCodeLine Stc_
-cli        = createCodeLine Cli_
-sti        = createCodeLine Sti_
-cld        = createCodeLine Cld_
-std        = createCodeLine Std_
-inc a      = createCodeLine (Inc_ a)
-dec a      = createCodeLine (Dec_ a)
-not_ a     = createCodeLine (Not_ a)
-neg a      = createCodeLine (Neg_ a)
-bswap a    = createCodeLine (Bswap a)
-bsf a b    = createCodeLine (Bsf a b)
-bsr a b    = createCodeLine (Bsr a b)
-bt a b     = createCodeLine (Bt  a b)
-add a b    = createCodeLine (Add_ a b)
-or_  a b   = createCodeLine (Or_  a b)
-adc a b    = createCodeLine (Adc_ a b)
-sbb a b    = createCodeLine (Sbb_ a b)
-and_ a b   = createCodeLine (And_ a b)
-sub a b    = createCodeLine (Sub_ a b)
-xor_ a b   = createCodeLine (Xor_ a b)
-cmp a b    = createCodeLine (Cmp_ a b)
-test a b   = createCodeLine (Test_ a b)
-mov a b    = createCodeLine (Mov_ a b)
+ret        = createCodeLine ASMInstrRet
+nop        = createCodeLine ASMInstrNop
+pushf      = createCodeLine ASMInstrPushF
+popf       = createCodeLine ASMInstrPopF
+cmc        = createCodeLine ASMInstrCmc
+clc        = createCodeLine ASMInstrClc
+stc        = createCodeLine ASMInstrStc
+cli        = createCodeLine ASMInstrCli
+sti        = createCodeLine ASMInstrSti
+cld        = createCodeLine ASMInstrCld
+std        = createCodeLine ASMInstrStd
+inc a      = createCodeLine (ASMInstrInc a)
+dec a      = createCodeLine (ASMInstrDec a)
+not_ a     = createCodeLine (ASMInstrNot a)
+neg a      = createCodeLine (ASMInstrNeg a)
+bswap a    = createCodeLine (ASMInstrBswap a)
+bsf a b    = createCodeLine (ASMInstrBsf a b)
+bsr a b    = createCodeLine (ASMInstrBsr a b)
+bt a b     = createCodeLine (ASMInstrBt  a b)
+add a b    = createCodeLine (ASMInstrAdd a b)
+or_  a b   = createCodeLine (ASMInstrOr  a b)
+adc a b    = createCodeLine (ASMInstrAdc a b)
+sbb a b    = createCodeLine (ASMInstrSbb a b)
+and_ a b   = createCodeLine (ASMInstrAnd a b)
+sub a b    = createCodeLine (ASMInstrSub a b)
+xor_ a b   = createCodeLine (ASMInstrXor a b)
+cmp a b    = createCodeLine (ASMInstrCmp a b)
+test a b   = createCodeLine (ASMInstrTest a b)
+mov a b    = createCodeLine (ASMInstrMov a b)
 
-mov' :: forall s s' r . IsSize s' => Operand RW s -> Operand r s' -> Code LCode CodeLine
+mov' :: forall s s' r . WithTypedSize s' => Operand RW s -> Operand r s' -> Code LCode CodeLine
 mov' a = mov (resizeOperand a :: Operand RW s')
 
-cmov c a b = createCodeLine (Cmov_ c a b)
-rol a b    = createCodeLine (Rol_ a b)
-ror a b    = createCodeLine (Ror_ a b)
-rcl a b    = createCodeLine (Rcl_ a b)
-rcr a b    = createCodeLine (Rcr_ a b)
-shl a b    = createCodeLine (Shl_ a b)
-shr a b    = createCodeLine (Shr_ a b)
-sar a b    = createCodeLine (Sar_ a b)
-xchg a b   = createCodeLine (Xchg_ a b)
-movd   a b = createCodeLine (Movd_   a b)
-movq   a b = createCodeLine (Movq_   a b)
-movdqa a b = createCodeLine (Movdqa_ a b)
-paddb  a b = createCodeLine (Paddb_  a b)
-paddw  a b = createCodeLine (Paddw_  a b)
-paddd  a b = createCodeLine (Paddd_  a b)
-paddq  a b = createCodeLine (Paddq_  a b)
-psubb  a b = createCodeLine (Psubb_  a b)
-psubw  a b = createCodeLine (Psubw_  a b)
-psubd  a b = createCodeLine (Psubd_  a b)
-psubq  a b = createCodeLine (Psubq_  a b)
-pxor   a b = createCodeLine (Pxor_   a b)
-psllw  a b = createCodeLine (Psllw_  a b)
-pslld  a b = createCodeLine (Pslld_  a b)
-psllq  a b = createCodeLine (Psllq_  a b)
-pslldq a b = createCodeLine (Pslldq_ a b)
-psrlw  a b = createCodeLine (Psrlw_  a b)
-psrld  a b = createCodeLine (Psrld_  a b)
-psrlq  a b = createCodeLine (Psrlq_  a b)
-psrldq a b = createCodeLine (Psrldq_ a b)
-psraw  a b = createCodeLine (Psraw_  a b)
-psrad  a b = createCodeLine (Psrad_  a b)
-lea a b    = createCodeLine (Lea_ a b)
-j a c      = createCodeLine (J_ a Nothing c)
-pop a      = createCodeLine (Pop_ a)
-push a     = createCodeLine (Push_ a)
-call a     = createCodeLine (Call_ a)
-jmpq a     = createCodeLine (Jmpq_ a)
-jmp b      = createCodeLine (Jmp_ Nothing b)
-db a       = createCodeLine (Data_ a)
-align a    = createCodeLine (Align_ a)
+cmov c a b = createCodeLine (ASMInstrCmov c a b)
+rol a b    = createCodeLine (ASMInstrRol a b)
+ror a b    = createCodeLine (ASMInstrRor a b)
+rcl a b    = createCodeLine (ASMInstrRcl a b)
+rcr a b    = createCodeLine (ASMInstrRcr a b)
+shl a b    = createCodeLine (ASMInstrShl a b)
+shr a b    = createCodeLine (ASMInstrShr a b)
+sar a b    = createCodeLine (ASMInstrSar a b)
+xchg a b   = createCodeLine (ASMInstrXchg a b)
+movd   a b = createCodeLine (ASMInstrMovd   a b)
+movq   a b = createCodeLine (ASMInstrMovq   a b)
+movdqa a b = createCodeLine (ASMInstrMovdqa a b)
+paddb  a b = createCodeLine (ASMInstrPaddb  a b)
+paddw  a b = createCodeLine (ASMInstrPaddw  a b)
+paddd  a b = createCodeLine (ASMInstrPaddd  a b)
+paddq  a b = createCodeLine (ASMInstrPaddq  a b)
+psubb  a b = createCodeLine (ASMInstrPsubb  a b)
+psubw  a b = createCodeLine (ASMInstrPsubw  a b)
+psubd  a b = createCodeLine (ASMInstrPsubd  a b)
+psubq  a b = createCodeLine (ASMInstrPsubq  a b)
+pxor   a b = createCodeLine (ASMInstrPxor   a b)
+psllw  a b = createCodeLine (ASMInstrPsllw  a b)
+pslld  a b = createCodeLine (ASMInstrPslld  a b)
+psllq  a b = createCodeLine (ASMInstrPsllq  a b)
+pslldq a b = createCodeLine (ASMInstrPslldq a b)
+psrlw  a b = createCodeLine (ASMInstrPsrlw  a b)
+psrld  a b = createCodeLine (ASMInstrPsrld  a b)
+psrlq  a b = createCodeLine (ASMInstrPsrlq  a b)
+psrldq a b = createCodeLine (ASMInstrPsrldq a b)
+psraw  a b = createCodeLine (ASMInstrPsraw  a b)
+psrad  a b = createCodeLine (ASMInstrPsrad  a b)
+lea a b    = createCodeLine (ASMInstrLea a b)
+j a c      = createCodeLine (ASMInstrJ a Nothing c)
+pop a      = createCodeLine (ASMInstrPop a)
+push a     = createCodeLine (ASMInstrPush a)
+call a     = createCodeLine (ASMInstrCall a)
+jmpq a     = createCodeLine (ASMInstrJmpq a)
+jmp b      = createCodeLine (ASMInstrJmp Nothing b)
+db a       = createCodeLine (ASMInstrData a)
+align a    = createCodeLine (ASMInstrAlign a)
 
 incrementLabelPtr :: CodeState -> CodeState
 incrementLabelPtr s = s { labelPtr = (labelPtr s)+1 }
@@ -121,6 +121,6 @@ label :: (BuilderCode c CodeLine) => CodeM c CodeLine Label
 label = do
   s <- CodeM get
   CodeM $ put $ incrementLabelPtr s
-  createCodeLine Label_
+  createCodeLine ASMInstrLabel
   return $ Label $ labelPtr s
 
