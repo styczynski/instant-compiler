@@ -35,8 +35,8 @@ import X86.Generator.Syntax.Scale
 import X86.Generator.Syntax.Utils
 
 -- | An operand can be an immediate, a register, a memory address or RIP-relative (memory address relative to the instruction pointer)
-data Operand :: Access -> Size -> * where
-  ImmOp     :: Immediate Int64 -> Operand R s
+data Operand :: AccessMode -> Size -> * where
+  ImmOp     :: Immediate Int64 -> Operand AccessReadOnly s
   RegOp     :: Reg s -> Operand rw s
   MemOp     :: WithTypedSize s' => Addr s' -> Operand rw s
   IPMemOp   :: Immediate Int32 -> Operand rw s
@@ -45,19 +45,19 @@ addr :: WithTypedSize s => Address s -> Operand rw s'
 addr = MemOp . makeAddr
 
 -- | `addr` with specialized type
-addr8 :: WithTypedSize s => Address s -> Operand rw S8
+addr8 :: WithTypedSize s => Address s -> Operand rw Size8B
 addr8 = addr
 
 -- | `addr` with specialized type
-addr16 :: WithTypedSize s => Address s -> Operand rw S16
+addr16 :: WithTypedSize s => Address s -> Operand rw Size16B
 addr16 = addr
 
 -- | `addr` with specialized type
-addr32 :: WithTypedSize s => Address s -> Operand rw S32
+addr32 :: WithTypedSize s => Address s -> Operand rw Size32B
 addr32 = addr
 
 -- | `addr` with specialized type
-addr64 :: WithTypedSize s => Address s -> Operand rw S64
+addr64 :: WithTypedSize s => Address s -> Operand rw Size64B
 addr64 = addr
 
 data Immediate a
@@ -71,9 +71,9 @@ instance Show Label where
   show (Label i) = ".l" ++ show i
 
 -- | Operand access modes
-data Access
-  = R     -- ^ readable operand
-  | RW    -- ^ readable and writeable operand
+data AccessMode
+  = AccessReadOnly     -- ^ readable operand
+  | AccessReadWrite    -- ^ readable and writeable operand
 
 -- | Register name.
 data RegName = RegName String | RegUnallocated String | RegNameUnknown
@@ -88,8 +88,8 @@ instance Show RegName where
 -- | A register.
 data Reg :: Size -> * where
   NormalReg :: RegName -> Word8 -> Reg s      -- \"normal\" registers are for example @AL@, @BX@, @ECX@ or @RSI@
-  HighReg   :: RegName -> Word8 -> Reg S8     -- \"high\" registers are @AH@, @BH@, @CH@ etc
-  XMM       :: RegName -> Word8 -> Reg S128   -- XMM registers
+  HighReg   :: RegName -> Word8 -> Reg Size8B     -- \"high\" registers are @AH@, @BH@, @CH@ etc
+  XMM       :: RegName -> Word8 -> Reg Size128B   -- XMM registers
 
 deriving instance Eq (Reg s)
 deriving instance Ord (Reg s)
@@ -116,12 +116,12 @@ pattern Disp a = Just a
 
 -- | intruction pointer (RIP) relative address
 ipRel :: Label -> Operand rw s
-ipRel l = IPMemOp $ LabelRelValue S32 l
+ipRel l = IPMemOp $ LabelRelValue Size32B l
 
-ipRelValue l = ImmOp $ LabelRelValue S32 l
+ipRelValue l = ImmOp $ LabelRelValue Size32B l
 
 -- | `ipRel` with specialized type
-ipRel8 :: Label -> Operand rw S8
+ipRel8 :: Label -> Operand rw Size8B
 ipRel8 = ipRel
 
 instance WithTypedSize s => Show (Reg s) where
@@ -132,11 +132,11 @@ instance WithTypedSize s => Show (Reg s) where
 
   show r@(NormalReg _ i) =
     (!! fromIntegral i) . (++ repeat (error ("show @Reg"))) $ case size r of
-      S8 ->
+      Size8B ->
         ["al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil"] ++ map (++ "b") r8
-      S16 -> r0 ++ map (++ "w") r8
-      S32 -> map ('e' :) r0 ++ map (++ "d") r8
-      S64 -> map ('r' :) r0 ++ r8
+      Size16B -> r0 ++ map (++ "w") r8
+      Size32B -> map ('e' :) r0 ++ map (++ "d") r8
+      Size64B -> map ('r' :) r0 ++ r8
    where
     r0 = ["ax", "cx", "dx", "bx", "sp", "bp", "si", "di"]
     r8 = ["r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"]
@@ -149,7 +149,7 @@ instance WithTypedSize s => Show (Addr s) where
     shd NoDisp   = []
     shd (Disp x) = [(signum x /= (-1), show (abs x))]
     shi NoIndex         = []
-    shi (IndexReg sc x) = [(True, show' (scaleFactor sc) ++ show x)]
+    shi (IndexReg sc x) = [(True, show' (getScaleFactor sc) ++ show x)]
     show' 1 = ""
     show' n = show n ++ " * "
     showSum []                = "0"
@@ -174,24 +174,24 @@ instance Show a => Show (Immediate a) where
   show (LabelRelValue s x) = show x
 
 instance WithTypedSize s => HasSize (Operand a s) where
-  size _ = size (ssize :: TypedSize s)
+  size _ = size (getSizeOf :: TypedSize s)
 
 instance WithTypedSize s => HasSize (Addr s) where
-  size _ = size (ssize :: TypedSize s)
+  size _ = size (getSizeOf :: TypedSize s)
 
 instance WithTypedSize s => HasSize (Address s) where
-  size _ = size (ssize :: TypedSize s)
+  size _ = size (getSizeOf :: TypedSize s)
 
 instance WithTypedSize s => HasSize (BaseReg s) where
-  size _ = size (ssize :: TypedSize s)
+  size _ = size (getSizeOf :: TypedSize s)
 
 instance WithTypedSize s => HasSize (Reg s) where
-  size _ = size (ssize :: TypedSize s)
+  size _ = size (getSizeOf :: TypedSize s)
 
 instance WithTypedSize s => HasSize (IndexReg s) where
-  size _ = size (ssize :: TypedSize s)
+  size _ = size (getSizeOf :: TypedSize s)
 
-instance (rw ~ R) => Num (Operand rw s) where
+instance (rw ~ AccessReadOnly) => Num (Operand rw s) where
   negate (ImmOp (Immediate x)) = ImmOp $ Immediate $ negate x
   fromInteger (Integral x) = ImmOp $ Immediate x
   fromInteger z = error $ show z ++ " does not fit into " -- ++ show s
@@ -279,7 +279,7 @@ instance FromReg Address where
 
 reg a b = fromReg $ NormalReg a b
 
-rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15 :: FromReg c => c S64
+rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15 :: FromReg c => c Size64B
 rax  = reg (RegName "rax") 0x0
 rcx  = reg (RegName "rcx") 0x1
 rdx  = reg (RegName "rdx") 0x2
@@ -297,7 +297,7 @@ r13  = reg (RegName "r13") 0xd
 r14  = reg (RegName "r14") 0xe
 r15  = reg (RegName "r15") 0xf
 
-eax, ecx, edx, ebx, esp, ebp, esi, edi, r8d, r9d, r10d, r11d, r12d, r13d, r14d, r15d :: FromReg c => c S32
+eax, ecx, edx, ebx, esp, ebp, esi, edi, r8d, r9d, r10d, r11d, r12d, r13d, r14d, r15d :: FromReg c => c Size32B
 eax  = reg (RegName "eax") 0x0
 ecx  = reg (RegName "ecx") 0x1
 edx  = reg (RegName "edx") 0x2
@@ -315,7 +315,7 @@ r13d = reg (RegName "r13d") 0xd
 r14d = reg (RegName "r14d") 0xe
 r15d = reg (RegName "r15d") 0xf
 
-ax, cx, dx, bx, sp, bp, si, di, r8w, r9w, r10w, r11w, r12w, r13w, r14w, r15w :: FromReg c => c S16
+ax, cx, dx, bx, sp, bp, si, di, r8w, r9w, r10w, r11w, r12w, r13w, r14w, r15w :: FromReg c => c Size16B
 ax   = reg (RegName "ax") 0x0
 cx   = reg (RegName "cx") 0x1
 dx   = reg (RegName "dx") 0x2
@@ -333,7 +333,7 @@ r13w = reg (RegName "r13w") 0xd
 r14w = reg (RegName "r14w") 0xe
 r15w = reg (RegName "r15w") 0xf
 
-al, cl, dl, bl, spl, bpl, sil, dil, r8b, r9b, r10b, r11b, r12b, r13b, r14b, r15b :: FromReg c => c S8
+al, cl, dl, bl, spl, bpl, sil, dil, r8b, r9b, r10b, r11b, r12b, r13b, r14b, r15b :: FromReg c => c Size8B
 al   = reg (RegName "al") 0x0
 cl   = reg (RegName "cl") 0x1
 dl   = reg (RegName "dl") 0x2
@@ -351,13 +351,13 @@ r13b = reg (RegName "r13b") 0xd
 r14b = reg (RegName "r14b") 0xe
 r15b = reg (RegName "r15b") 0xf
 
-ah, ch, dh, bh :: FromReg c => c S8
+ah, ch, dh, bh :: FromReg c => c Size8B
 ah   = fromReg $ HighReg (RegName "ah") 0x0
 ch   = fromReg $ HighReg (RegName "ch") 0x1
 dh   = fromReg $ HighReg (RegName "dh") 0x2
 bh   = fromReg $ HighReg (RegName "bh") 0x3
 
-xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 :: FromReg c => c S128
+xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 :: FromReg c => c Size128B
 xmm0 = fromReg $ XMM (RegName "xmm0") 0x0
 xmm1 = fromReg $ XMM (RegName "xmm1") 0x1
 xmm2 = fromReg $ XMM (RegName "xmm2") 0x2
@@ -369,12 +369,12 @@ xmm7 = fromReg $ XMM (RegName "xmm7") 0x7
 
 pattern RegA = RegOp (NormalReg (RegNameUnknown) 0x0)
 
-pattern RegCl :: Operand r S8
+pattern RegCl :: Operand r Size8B
 pattern RegCl = RegOp (NormalReg (RegNameUnknown) 0x1)
 
 --------------------------------------------------------------
 
-resizeOperand :: WithTypedSize s' => Operand RW s -> Operand RW s'
+resizeOperand :: WithTypedSize s' => Operand AccessReadWrite s -> Operand AccessReadWrite s'
 resizeOperand (RegOp x) = RegOp $ resizeRegCode x
 resizeOperand (MemOp a) = MemOp a
 resizeOperand (IPMemOp a) = IPMemOp a

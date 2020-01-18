@@ -20,10 +20,9 @@ import           Control.Monad.Tardis
 import qualified Data.Map                      as Map
 
 import           X86.Generator.Asm
-import           X86.Generator.LCode
+import           X86.Generator.CodeBuilder
 import           X86.Generator.CodeGen
 import           X86.Generator.Environment
-import           X86.Generator.Registers
 import           X86.Generator.CallConv
 
 -------------------------------------------------------------- derived constructs
@@ -79,7 +78,7 @@ instance HasBytes CString where
 
 -- | we should implement PUSHA and POPA later
 {- HLINT ignore all_regs_except_rsp -}
-all_regs_except_rsp :: [Operand rw S64]
+all_regs_except_rsp :: [Operand rw Size64B]
 all_regs_except_rsp =
   [ rax
   , rcx
@@ -105,7 +104,7 @@ push_all = sequence_ [ push r | r <- all_regs_except_rsp ]
 {- HLINT ignore pop_all -}
 pop_all = sequence_ [ pop r | r <- reverse all_regs_except_rsp ]
 
-traceReg :: WithTypedSize s => String -> Operand RW s -> Code LCode CodeLine
+traceReg :: WithTypedSize s => String -> Operand AccessReadOnly s -> Code LCode CodeLine
 traceReg d r = do
   pushf
   push_all
@@ -117,12 +116,12 @@ traceReg d r = do
   popf
  where
   s = case size r of
-    S8  -> "hh"
-    S16 -> "h"
-    S32 -> ""
-    S64 -> "l"
+    Size8B  -> "hh"
+    Size16B -> "h"
+    Size32B -> ""
+    Size64B -> "l"
 
-allocReg :: (BuilderCode c l) => FromReg r => CodeM c l (r S64)
+allocReg :: (BuilderCode c l) => FromReg r => CodeM c l (r Size64B)
 allocReg = do
   s <- CodeM get
   CodeM $ put $ incrementRegPtr s

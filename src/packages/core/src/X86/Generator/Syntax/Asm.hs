@@ -100,60 +100,60 @@ data CodeLine where
   ASMInstrSti     :: CodeLine
   ASMInstrCld     :: CodeLine
   ASMInstrStd     :: CodeLine
-  ASMInstrInc     :: WithTypedSize s => Operand RW s -> CodeLine
-  ASMInstrDec     :: WithTypedSize s => Operand RW s -> CodeLine
-  ASMInstrNot     :: WithTypedSize s => Operand RW s -> CodeLine
-  ASMInstrNeg     :: WithTypedSize s => Operand RW s -> CodeLine
-  ASMInstrBswap   :: WithTypedSize s => Operand RW s -> CodeLine
-  ASMInstrAdd     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrOr      :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrAdc     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrSbb     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrAnd     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrSub     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrXor     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrCmp     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrTest    :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrMov     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrBsf     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrBsr     :: WithTypedSize s => Operand RW s -> Operand r s -> CodeLine
-  ASMInstrRol     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrRor     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrRcl     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrRcr     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrShl     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrShr     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrSar     :: WithTypedSize s => Operand RW s -> Operand r S8 -> CodeLine
-  ASMInstrBt      :: WithTypedSize s => Operand r s -> Operand RW s -> CodeLine
-  ASMInstrMovdqa  :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPaddb   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPaddw   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPaddd   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPaddq   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPsubb   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPsubw   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPsubd   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPsubq   :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPxor    :: Operand RW S128 -> Operand r S128 -> CodeLine
-  ASMInstrPsllw   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPslld   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsllq   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPslldq  :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsrlw   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsrld   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsrlq   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsrldq  :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsraw   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrPsrad   :: Operand RW S128 -> Operand r S8 -> CodeLine
-  ASMInstrMovd    :: (WithTypedSize s, WithTypedSize s') => Operand RW s -> Operand r s' -> CodeLine
-  ASMInstrMovq    :: (WithTypedSize s, WithTypedSize s') => Operand RW s -> Operand r s' -> CodeLine
-  ASMInstrCmov    :: WithTypedSize s => Condition -> Operand RW s -> Operand RW s -> CodeLine
-  ASMInstrXchg    :: WithTypedSize s => Operand RW s -> Operand RW s -> CodeLine
-  ASMInstrLea     :: (WithTypedSize s, WithTypedSize s') => Operand RW s -> Operand RW s' -> CodeLine
-  ASMInstrPop     :: Operand RW S64 -> CodeLine
-  ASMInstrPush    :: Operand r  S64 -> CodeLine
-  ASMInstrCall    :: Operand r S64 -> CodeLine
-  ASMInstrJmpq    :: Operand r S64 -> CodeLine
+  ASMInstrInc     :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
+  ASMInstrDec     :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
+  ASMInstrNot     :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
+  ASMInstrNeg     :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
+  ASMInstrBswap   :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
+  ASMInstrAdd     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrOr      :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrAdc     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrSbb     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrAnd     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrSub     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrXor     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrCmp     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrTest    :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrMov     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrBsf     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrBsr     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrRol     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrRor     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrRcl     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrRcr     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrShl     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrShr     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrSar     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r Size8B -> CodeLine
+  ASMInstrBt      :: WithTypedSize s => Operand r s -> Operand AccessReadWrite s -> CodeLine
+  ASMInstrMovdqa  :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPaddb   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPaddw   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPaddd   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPaddq   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPsubb   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPsubw   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPsubd   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPsubq   :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPxor    :: Operand AccessReadWrite Size128B -> Operand r Size128B -> CodeLine
+  ASMInstrPsllw   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPslld   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsllq   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPslldq  :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsrlw   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsrld   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsrlq   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsrldq  :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsraw   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrPsrad   :: Operand AccessReadWrite Size128B -> Operand r Size8B -> CodeLine
+  ASMInstrMovd    :: (WithTypedSize s, WithTypedSize s') => Operand AccessReadWrite s -> Operand r s' -> CodeLine
+  ASMInstrMovq    :: (WithTypedSize s, WithTypedSize s') => Operand AccessReadWrite s -> Operand r s' -> CodeLine
+  ASMInstrCmov    :: WithTypedSize s => Condition -> Operand AccessReadWrite s -> Operand AccessReadWrite s -> CodeLine
+  ASMInstrXchg    :: WithTypedSize s => Operand AccessReadWrite s -> Operand AccessReadWrite s -> CodeLine
+  ASMInstrLea     :: (WithTypedSize s, WithTypedSize s') => Operand AccessReadWrite s -> Operand AccessReadWrite s' -> CodeLine
+  ASMInstrPop     :: Operand AccessReadWrite Size64B -> CodeLine
+  ASMInstrPush    :: Operand r  Size64B -> CodeLine
+  ASMInstrCall    :: Operand r Size64B -> CodeLine
+  ASMInstrJmpq    :: Operand r Size64B -> CodeLine
   ASMInstrJ       :: Condition -> Maybe Size -> Label -> CodeLine
   ASMInstrJmp     :: Maybe Size -> Label -> CodeLine
   ASMInstrLabel   :: CodeLine
@@ -248,7 +248,7 @@ showCodeLine = \case
     where
       isPrint c = c >= 32 && c <= 126
 
-  ASMInstrJ  cc s l -> showOp ("j" ++ show cc) $ (case s of Just S8 -> "short "; Just S32 -> "near "; _ -> "") ++ show l
-  ASMInstrJmp  s  l -> showOp "jmp" $ (case s of Just S8 -> "short "; Just S32 -> "near "; _ -> "") ++ show l
+  ASMInstrJ  cc s l -> showOp ("j" ++ show cc) $ (case s of Just Size8B -> "short "; Just Size32B -> "near "; _ -> "") ++ show l
+  ASMInstrJmp  s  l -> showOp "jmp" $ (case s of Just Size8B -> "short "; Just Size32B -> "near "; _ -> "") ++ show l
   ASMInstrLabel     -> newLabel >>= codeLine . show
 

@@ -35,7 +35,6 @@ import Debug.Trace
 import qualified Data.Map                      as Map
 
 import X86.Generator.Asm
-import X86.Generator.Registers
 
 tellAddr = CodeBuilder 0 0 $ do
   (c, _, _) <- lift getPast
@@ -96,14 +95,14 @@ pattern FJust a = First (Just a)
 pattern FNothing = First Nothing
 
 integralToBytes :: (Bits a, Integral a) => Bool{-signed-} -> Size -> a -> Maybe Bytes
-integralToBytes False S64 w = toBytes <$> (toIntegralSized w :: Maybe Word64)
-integralToBytes False S32 w = toBytes <$> (toIntegralSized w :: Maybe Word32)
-integralToBytes False S16 w = toBytes <$> (toIntegralSized w :: Maybe Word16)
-integralToBytes False S8  w = toBytes <$> (toIntegralSized w :: Maybe Word8)
-integralToBytes True  S64 w = toBytes <$> (toIntegralSized w :: Maybe Int64)
-integralToBytes True  S32 w = toBytes <$> (toIntegralSized w :: Maybe Int32)
-integralToBytes True  S16 w = toBytes <$> (toIntegralSized w :: Maybe Int16)
-integralToBytes True  S8  w = toBytes <$> (toIntegralSized w :: Maybe Int8)
+integralToBytes False Size64B w = toBytes <$> (toIntegralSized w :: Maybe Word64)
+integralToBytes False Size32B w = toBytes <$> (toIntegralSized w :: Maybe Word32)
+integralToBytes False Size16B w = toBytes <$> (toIntegralSized w :: Maybe Word16)
+integralToBytes False Size8B  w = toBytes <$> (toIntegralSized w :: Maybe Word8)
+integralToBytes True  Size64B w = toBytes <$> (toIntegralSized w :: Maybe Int64)
+integralToBytes True  Size32B w = toBytes <$> (toIntegralSized w :: Maybe Int32)
+integralToBytes True  Size16B w = toBytes <$> (toIntegralSized w :: Maybe Int16)
+integralToBytes True  Size8B  w = toBytes <$> (toIntegralSized w :: Maybe Int8)
 
 -- multi-byte nop operations
 nops :: Int -> Bytes
@@ -156,10 +155,10 @@ mkRef s@(sizeLen -> sn) offset (Label l_) = CodeBuilder sn sn $ do
     let i = ls !! (- l - 1)
         vx = i - n - offset
         z = case s of
-          S8  -> case vx of
+          Size8B  -> case vx of
             Integral j -> toBytes (j :: Int8)
             _ -> error $ show vx ++ " does not fit into an Int8"
-          S32  -> case vx of
+          Size32B  -> case vx of
             Integral j -> toBytes (j :: Int32)
             _ -> error $ show vx ++ " does not fit into an Int32"
         ~(bs, ps')
@@ -188,8 +187,8 @@ mkAutoRef ss (Label l_) = CodeBuilder (minimum sizes) (maximum sizes) $ do
 
         g [] = error $ show vx ++ " does not fit into auto size"
         g ((s, c): ss) = case (s, vx - length c - sizeLen s) of
-          (S8,  Integral j) -> c <> toBytes (j :: Int8)
-          (S32, Integral j) -> c <> toBytes (j :: Int32)
+          (Size8B,  Integral j) -> c <> toBytes (j :: Int8)
+          (Size32B, Integral j) -> c <> toBytes (j :: Int32)
           _ -> g ss
 
         ~(sn, bs, ps')
@@ -203,8 +202,8 @@ mkAutoRef ss (Label l_) = CodeBuilder (minimum sizes) (maximum sizes) $ do
 
         g' [] = error $ show vx' ++ " does not fit into auto size"
         g' ((s, c): ss) = case (s, vx') of
-          (S8,  Integral (j :: Int8)) -> (c, s)
-          (S32, Integral (j :: Int32)) -> (c, s)
+          (Size8B,  Integral (j :: Int8)) -> (c, s)
+          (Size32B, Integral (j :: Int32)) -> (c, s)
           _ -> g' ss
 
         l = l_ - length ls

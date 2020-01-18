@@ -33,9 +33,8 @@ import Debug.Trace
 import qualified Data.Map                      as Map
 
 import X86.Generator.Asm
-import X86.Generator.LCode
+import X86.Generator.CodeBuilder
 import X86.Generator.Environment
-import X86.Generator.Registers
 
 ret        = createCodeLine ASMInstrRet
 nop        = createCodeLine ASMInstrNop
@@ -67,8 +66,8 @@ cmp a b    = createCodeLine (ASMInstrCmp a b)
 test a b   = createCodeLine (ASMInstrTest a b)
 mov a b    = createCodeLine (ASMInstrMov a b)
 
-mov' :: forall s s' r . WithTypedSize s' => Operand RW s -> Operand r s' -> Code LCode CodeLine
-mov' a = mov (resizeOperand a :: Operand RW s')
+mov' :: forall s s' r . WithTypedSize s' => Operand AccessReadWrite s -> Operand r s' -> Code LCode CodeLine
+mov' a = mov (resizeOperand a :: Operand AccessReadWrite s')
 
 cmov c a b = createCodeLine (ASMInstrCmov c a b)
 rol a b    = createCodeLine (ASMInstrRol a b)

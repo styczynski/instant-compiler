@@ -29,24 +29,32 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Monad.State
 
+class ScaleFactor i where
+  getScaleFactor :: i -> Int
+  toScale :: Int -> i
+  s1 :: i
+  s2 :: i
+  s4 :: i
+  s8 :: i
 
 -- | The scaling of an index. (replace with Size?)
 newtype Scale = Scale Word8
   deriving (Eq)
 
-s1 = Scale 0x0
-s2 = Scale 0x1
-s4 = Scale 0x2
-s8 = Scale 0x3
+instance ScaleFactor Scale where
+  s1 = Scale 0x0
+  s2 = Scale 0x1
+  s4 = Scale 0x2
+  s8 = Scale 0x3
 
-toScale = \case
-  1 -> s1
-  2 -> s2
-  4 -> s4
-  8 -> s8
+  toScale = \case
+    1 -> s1
+    2 -> s2
+    4 -> s4
+    8 -> s8
 
-scaleFactor (Scale i) = case i of
-  0x0 -> 1
-  0x1 -> 2
-  0x2 -> 4
-  0x3 -> 8
+  getScaleFactor (Scale i) = case i of
+    0x0 -> 1
+    0x1 -> 2
+    0x2 -> 4
+    0x3 -> 8

@@ -2,7 +2,6 @@
 
 module X86.Examples where
 
-import X86.Generator.LCode
 import X86.X86
 
 -- | Example: Fibonacci function in Assembly

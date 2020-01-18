@@ -8,4 +8,4 @@ import X86.Generator.CodeGen as X86
 import X86.Generator.CallConv as X86
 import X86.Generator.Utils as X86
 import X86.Generator.Environment as X86
-import X86.Generator.Registers as X86
+import X86.Generator.CodeBuilder as X86

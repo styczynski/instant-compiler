@@ -11,14 +11,13 @@ import Data.Monoid
 
 import X86.Generator.Asm
 import X86.Generator.Environment
-import X86.Generator.Registers
-import X86.Generator.LCode
+import X86.Generator.CodeBuilder
 import X86.Generator.CodeGen
 
 ------------------------------------------------------------------------------
 
 -- helper to call a function
-callFun :: Operand RW S64 -> FunPtr a -> Code LCode CodeLine
+callFun :: Operand AccessReadWrite Size64B -> FunPtr a -> Code LCode CodeLine
 callFun r p = do
   mov r $ fromIntegral $ ptrToIntPtr $ castFunPtrToPtr p
   call r

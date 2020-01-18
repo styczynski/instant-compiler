@@ -1,7 +1,7 @@
 {-# language LambdaCase #-}
 {-# language DataKinds #-}
 {-# language GADTs #-}
-module X86.Generator.Registers where
+module X86.Generator.Syntax.Registers where
 
 import Numeric
 import Data.Maybe
@@ -19,12 +19,18 @@ import Debug.Trace
 
 import qualified Data.Map                      as Map
 
-import X86.Generator.Asm
+import X86.Generator.Syntax.Asm
+import X86.Generator.Syntax.Bytes
+import X86.Generator.Syntax.Sizes
+import X86.Generator.Syntax.Scale
+import X86.Generator.Syntax.Operands
+import X86.Generator.Syntax.Utils
+
 
 data SReg where
   SReg :: WithTypedSize s => Reg s -> SReg
 
-phisicalReg :: SReg -> Reg S64
+phisicalReg :: SReg -> Reg Size64B
 phisicalReg (SReg (HighReg n x)) = NormalReg n x
 phisicalReg (SReg (NormalReg n x)) = NormalReg n x
 
@@ -37,11 +43,11 @@ regs = \case
   RegOp r -> [SReg r]
   _ -> mempty
 
-isRex (SReg x@(NormalReg _ r)) = r .&. 0x8 /= 0 || size x == S8 && r `shiftR` 2 == 1
+isRex (SReg x@(NormalReg _ r)) = r .&. 0x8 /= 0 || size x == Size8B && r `shiftR` 2 == 1
 isRex _ = False
 
 noHighRex r = not $ any isHigh r && any isRex r
 
-no64 S64 = S32
+no64 Size64B = Size32B
 no64 s = s
 
