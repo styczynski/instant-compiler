@@ -40,7 +40,9 @@ data Immediate a
   | LabelRelValue Size{-size hint-} Label
 
 -- Type of labels
-newtype Label = Label {unLabel :: Int}
+data Label
+  = Label Int
+  | LabelStr String
 
 -- | Operand access modes
 data AccessMode
@@ -59,6 +61,7 @@ instance Show a => Show (Immediate a) where
   show (LabelRelValue s x) = show x
 
 instance Show Label where
+  show (LabelStr str) = ".l" ++ str
   show (Label i) = ".l" ++ show i
 
 instance FromReg (Operand r) where

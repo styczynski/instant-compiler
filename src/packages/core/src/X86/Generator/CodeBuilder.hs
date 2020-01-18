@@ -189,6 +189,7 @@ mkCodeBuilder' = \case
   ASMInstrJmpq (ImmOp (LabelRelValue Size32B l)) -> mkAutoRef [(Size8B, [0xeb]), (Size32B, [0xe9])] l
   ASMInstrJmpq a -> op1' 0xff 0x4 a
 
+  ASMInstrLabelStr _ -> mkCodeBuilder' ASMInstrLabel
   ASMInstrLabel -> CodeBuilder 0 0 $ do
     bs <- lift $ mdo
       (n, ls, ps) <- getPast

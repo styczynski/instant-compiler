@@ -157,6 +157,7 @@ data CodeLine where
   ASMInstrJ       :: Condition -> Maybe Size -> Label -> CodeLine
   ASMInstrJmp     :: Maybe Size -> Label -> CodeLine
   ASMInstrLabel   :: CodeLine
+  ASMInstrLabelStr:: String -> CodeLine
   ASMInstrData    :: Bytes -> CodeLine
   ASMInstrAlign   :: Int   -> CodeLine
 
@@ -251,4 +252,6 @@ showCodeLine = \case
   ASMInstrJ  cc s l -> showOp ("j" ++ show cc) $ (case s of Just Size8B -> "short "; Just Size32B -> "near "; _ -> "") ++ show l
   ASMInstrJmp  s  l -> showOp "jmp" $ (case s of Just Size8B -> "short "; Just Size32B -> "near "; _ -> "") ++ show l
   ASMInstrLabel     -> newLabel >>= codeLine . show
+  ASMInstrLabelStr s-> (codeLine . show) (LabelStr s)
+
 

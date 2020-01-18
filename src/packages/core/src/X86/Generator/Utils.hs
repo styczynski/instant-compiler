@@ -34,11 +34,20 @@ unless cc x = mdo
   l <- label
   return ()
 
--- | create function
-declFun :: String -> [RegName] -> Code LCode CodeLine -> Code LCode CodeLine
-declFun name args body = do
+labelFunction :: (BuilderCode c CodeLine) => CodeM c CodeLine Label
+labelFunction = do
   s <- CodeM get
-  CodeM $ put $ incrementLabelPtr s
+  createCodeLine ASMInstrLabel
+  return $ Label $ labelPtr s
+
+-- | create function
+declareFunction :: String -> [String] -> Code LCode CodeLine -> Code LCode CodeLine
+declareFunction name args body = do
+  s <- CodeM get
+
+  createCodeLine $ ASMInstrLabelStr "funx"
+  saveNonVolatile body
+  CodeM $ put s
 
 -- | do while loop construction
 doWhile cc x = do

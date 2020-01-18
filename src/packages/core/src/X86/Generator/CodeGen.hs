@@ -36,6 +36,8 @@ import X86.Generator.Asm
 import X86.Generator.CodeBuilder
 import X86.Generator.Environment
 
+type X86 m = CodeM LCode CodeLine m
+
 ret        = createCodeLine ASMInstrRet
 nop        = createCodeLine ASMInstrNop
 pushf      = createCodeLine ASMInstrPushF
