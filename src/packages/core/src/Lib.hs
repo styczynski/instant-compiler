@@ -38,7 +38,7 @@ class (Analyzable r t) => Compilable r t where
                 _ <- liftIO $ putStrLn $ show tree
                 _ <- analyze tree t0 env
                 _ <- return $ assert False 0
-                res <- runAST (r0, t0) env compiler
+                res <- runAST (tree, t0) env compiler
                 return res
 
   run :: (r, t) -> Compiler r t -> Verbosity -> String -> IO ExecutionResult

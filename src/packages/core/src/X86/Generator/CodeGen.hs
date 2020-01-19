@@ -36,8 +36,6 @@ import X86.Generator.Asm
 import X86.Generator.CodeBuilder
 import X86.Generator.Environment
 
-type X86 m = CodeM LCode CodeLine m
-
 ret        = createCodeLine ASMInstrRet
 nop        = createCodeLine ASMInstrNop
 pushf      = createCodeLine ASMInstrPushF
@@ -63,6 +61,8 @@ adc a b    = createCodeLine (ASMInstrAdc a b)
 sbb a b    = createCodeLine (ASMInstrSbb a b)
 and_ a b   = createCodeLine (ASMInstrAnd a b)
 sub a b    = createCodeLine (ASMInstrSub a b)
+idiv a b    = createCodeLine (ASMInstrDiv a b)
+imul a b   = createCodeLine (ASMInstrIMul a b)
 xor_ a b   = createCodeLine (ASMInstrXor a b)
 cmp a b    = createCodeLine (ASMInstrCmp a b)
 test a b   = createCodeLine (ASMInstrTest a b)

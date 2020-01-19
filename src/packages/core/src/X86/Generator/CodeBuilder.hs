@@ -88,6 +88,8 @@ mkCodeBuilder' = \case
   ASMInstrSub  a b -> op2 0x5 a b
   ASMInstrXor  a b -> op2 0x6 a b
   ASMInstrCmp  a b -> op2 0x7 a b
+  ASMInstrSub  a b -> op2 0x7 a b
+  ASMInstrIMul a b -> op2 0x7 a b
 
   ASMInstrRol a b -> shiftOp 0x0 a b
   ASMInstrRor a b -> shiftOp 0x1 a b

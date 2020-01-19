@@ -106,6 +106,8 @@ data CodeLine where
   ASMInstrNeg     :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
   ASMInstrBswap   :: WithTypedSize s => Operand AccessReadWrite s -> CodeLine
   ASMInstrAdd     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrIMul    :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
+  ASMInstrDiv     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
   ASMInstrOr      :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
   ASMInstrAdc     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
   ASMInstrSbb     :: WithTypedSize s => Operand AccessReadWrite s -> Operand r s -> CodeLine
@@ -182,6 +184,8 @@ showCodeLine = \case
   ASMInstrSbb   op1 op2 -> showOp2 "sbb"  op1 op2
   ASMInstrAnd   op1 op2 -> showOp2 "and"  op1 op2
   ASMInstrSub   op1 op2 -> showOp2 "sub"  op1 op2
+  ASMInstrIMul  op1 op2 -> showOp2 "imul"  op1 op2
+  ASMInstrDiv   op1 op2 -> showOp2 "div"  op1 op2
   ASMInstrXor   op1 op2 -> showOp2 "xor"  op1 op2
   ASMInstrCmp   op1 op2 -> showOp2 "cmp"  op1 op2
   ASMInstrTest  op1 op2 -> showOp2 "test" op1 op2

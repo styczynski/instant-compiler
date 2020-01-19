@@ -78,7 +78,7 @@ instance WithTypedSize s => Show (Reg s) where
   show (HighReg _ i) =
     (["ah", " ch", "dh", "bh"] ++ repeat (error ("show @Reg")))
       !! fromIntegral i
-
+  show r@(NormalReg (RegUnallocated name) _) = "%" ++ name
   show r@(NormalReg _ i) =
     (!! fromIntegral i) . (++ repeat (error ("show @Reg"))) $ case size r of
       Size8B ->

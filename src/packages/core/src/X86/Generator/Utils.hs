@@ -44,8 +44,7 @@ labelFunction = do
 declareFunction :: String -> [String] -> Code LCode CodeLine -> Code LCode CodeLine
 declareFunction name args body = do
   s <- CodeM get
-
-  createCodeLine $ ASMInstrLabelStr "funx"
+  createCodeLine $ ASMInstrLabelStr $ "fun_" ++ name
   saveNonVolatile body
   CodeM $ put s
 
@@ -130,7 +129,7 @@ traceReg d r = do
     Size32B -> ""
     Size64B -> "l"
 
-allocReg :: (BuilderCode c l) => FromReg r => CodeM c l (r Size64B)
+allocReg :: (BuilderCode c l) => FromReg r => CodeM c l (r Size32B)
 allocReg = do
   s <- CodeM get
   CodeM $ put $ incrementRegPtr s
