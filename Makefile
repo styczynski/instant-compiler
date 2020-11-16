@@ -6,5 +6,5 @@ all: stack
 	$(STACK) exec -- shake
 
 stack:
-	-bash ./scripts/setup.sh
+	bash ./scripts/setup.sh
 	./scripts/links.sh
