@@ -1,3 +1,5 @@
+**/._.DS_Store
+*.tar.gz
 .stack-work/
 instant-compiler.cabal
 *~

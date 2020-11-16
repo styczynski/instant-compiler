@@ -56,6 +56,55 @@ postCompile opts = do
   out <- if (llvmRunProgram opts) then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ (llvmProgramName opts))) [] else return "Post-compile hook finished."
   return (T.unpack out, env)
 
+uniqueNameForExpStack :: Exp -> Exec (String, Environment)
+uniqueNameForExpStack (ExpLit value) = do
+  env <- ask
+  return (show value, env)
+uniqueNameForExpStack (ExpVar (Ident name)) = do
+  env <- ask
+  name <- getVarName name
+  return ("%" ++ name, env)
+uniqueNameForExpStack _ = do
+  env <- ask
+  (sl, env0) <- return $ uniqueName env
+  return ("%" ++ sl, env0)
+
+compileExp :: String -> Exp -> Exec ([LInstruction], Environment)
+compileExp stackVarName (ExpAdd l r) = do
+  env <- ask
+  (sl, env0) <- local (\_ -> env) $ uniqueNameForExpStack l
+  (sr, env1) <- local (\_ -> env0) $ uniqueNameForExpStack r
+  (cl, env2) <- local (\_ -> env1) $ compileExp sl l
+  (cr, env3) <- local (\_ -> env2) $ compileExp sr r
+  return (cl ++ cr ++ [Add stackVarName "i32" sl sr], env3)
+compileExp stackVarName (ExpSub l r) = do
+  env <- ask
+  (sl, env0) <- local (\_ -> env) $ uniqueNameForExpStack l
+  (sr, env1) <- local (\_ -> env0) $ uniqueNameForExpStack r
+  (cl, env2) <- local (\_ -> env1) $ compileExp sl l
+  (cr, env3) <- local (\_ -> env2) $ compileExp sr r
+  return (cl ++ cr ++ [Sub stackVarName "i32" sl sr], env3)
+compileExp stackVarName (ExpDiv l r) = do
+  env <- ask
+  (sl, env0) <- local (\_ -> env) $ uniqueNameForExpStack l
+  (sr, env1) <- local (\_ -> env0) $ uniqueNameForExpStack r
+  (cl, env2) <- local (\_ -> env1) $ compileExp sl l
+  (cr, env3) <- local (\_ -> env2) $ compileExp sr r
+  return (cl ++ cr ++ [Div stackVarName "i32" sl sr], env3)
+compileExp stackVarName (ExpMul l r) = do
+  env <- ask
+  (sl, env0) <- local (\_ -> env) $ uniqueNameForExpStack l
+  (sr, env1) <- local (\_ -> env0) $ uniqueNameForExpStack r
+  (cl, env2) <- local (\_ -> env1) $ compileExp sl l
+  (cr, env3) <- local (\_ -> env2) $ compileExp sr r
+  return (cl ++ cr ++ [Mul stackVarName "i32" sl sr], env3)
+compileExp stackVarName (ExpLit _) = do
+  env <- ask
+  return ([], env)
+compileExp stackVarName (ExpVar _) = do
+  env <- ask
+  return ([], env)
+
 getVarName :: String -> Exec String
 getVarName name = do
   env <- ask
@@ -77,16 +126,42 @@ generateAssignVarName False name = do
   env <- ask
   return (name, env)
 
+compileStmt :: Bool -> Stmt -> Exec ([LInstruction], Environment)
+compileStmt shouldBeUnique (SAss (Ident name) (ExpLit val)) = do
+  env <- ask
+  (assName, env) <- generateAssignVarName shouldBeUnique name
+  return ([Add ("%" ++ assName) "i32" (show val) "0"], env)
+compileStmt shouldBeUnique (SAss (Ident name) (ExpVar (Ident aName))) = do
+  env <- ask
+  aName <- getVarName aName
+  (assName, env) <- generateAssignVarName shouldBeUnique name
+  return ([Add ("%" ++ assName) "i32" ("%" ++ aName) "0"], env)
+-- this fails
+compileStmt shouldBeUnique (SAss (Ident name) exp) = do
+  oldEnv <- ask
+  (assName, env) <- generateAssignVarName shouldBeUnique name
+  envScoped <- return $ env { scope = (scope oldEnv) }
+  (retCode, retEnv) <- local (\_ -> envScoped) $ compileExp ("%" ++ assName) exp
+  return (retCode, retEnv { scope = (M.union (scope env) (scope retEnv)) })
+compileStmt _ (SExp exp) = do
+   env <- ask
+   (tmp, tmpEnv) <- return $ uniqueName env
+   (assIns, env) <- local (\_ -> tmpEnv) $ compileStmt False $ SAss (Ident tmp) exp
+   return (assIns ++ [Print $ "%" ++ tmp], env)
+
 defaultCompilerLLVM :: Program -> Exec (String, Environment)
 defaultCompilerLLVM p = compilerLLVM defaultLLVMCompilerConfiguration p
 
 compile :: Program -> Exec ([LInstruction], Environment)
-compile (Program statements) = do
+compile (Prog statements) = do
   env <- ask
-  return ([], env)
+  (pOut, pEnv) <- foldM (\(out, env) ins -> do
+      (newOut, newEnv) <- local (\_ -> env) $ compileStmt True ins
+      return (out ++ newOut, newEnv)) ([], env) $ statements
+  return (pOut, pEnv)
 
 compilerLLVM :: LLVMCompilerConfiguration -> Program -> Exec (String, Environment)
-compilerLLVM opts program@(Program statements) = do
+compilerLLVM opts program@(Prog statements) = do
   _ <- liftIO $ putStrLn "Compile Instant code..."
   header <- return $ [r|declare void @printInt(i32)
        define i32 @main() {

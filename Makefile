@@ -1,4 +1,4 @@
-STACK := $(shell ./scripts/get_stack.sh)
+STACK := $(shell echo "$$HOME/Development/bin/stack/stack")
 
 all: stack
 	$(STACK) install --only-dependencies
@@ -6,5 +6,5 @@ all: stack
 	$(STACK) exec -- shake
 
 stack:
-	-bash ./scripts/setup.sh
-	./scripts/links.sh
+	-bash ./setup.sh
+	./links.sh
