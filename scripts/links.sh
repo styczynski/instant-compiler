@@ -1,3 +1,5 @@
+#!/bin/bash
+
 mkdir -p src/packages/parser/_build/parser
 STACK_EXEC=""
 if ! [ -x "$(command -v git)" ]; then

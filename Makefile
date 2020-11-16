@@ -5,6 +5,11 @@ all: stack
 	$(STACK) install shake
 	$(STACK) exec -- shake
 
+build:
+	$(STACK) install --only-dependencies
+	$(STACK) install shake
+	$(STACK) exec -- shake
+
 stack:
 	bash ./scripts/setup.sh
-	./scripts/links.sh
+	bash ./scripts/links.sh
