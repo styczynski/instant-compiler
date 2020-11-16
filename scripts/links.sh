@@ -9,7 +9,7 @@ else
 fi
 
 if [ "$STACK_EXEC" == "" ]; then
-  STACK_EXEC="$HOME/Development/bin/stack/stack"
+  STACK_EXEC="$HOME/Development/bin/stack-2.5.1/stack"
 fi
 
 echo "Stack executable path: $STACK_EXEC"

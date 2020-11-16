@@ -1,48 +1,56 @@
 #!/bin/bash
 
-DOWNLOADS_DIR="$HOME/Downloads"
+DOWNLOADS_DIR=$HOME/Downloads
 
-GHC_VERSION="8.0.1"  
-ARCHITECTURE="x86_64"  
-# for 32 bit ARCHITECTURE="i386"      
-PLATFORM="deb8-linux"  
-GHC_DIST_FILENAME="ghc-$GHC_VERSION-$ARCHITECTURE-$PLATFORM.tar.xz"
-
-CABAL_VERSION="1.24.0.0"
-CABAL_DIST_FILENAME="Cabal-$CABAL_VERSION.tar.gz"
-
-CABAL_INSTALL_VERSION="1.24.0.0"
-CABAL_INSTALL_DIST_FILENAME="cabal-install-$CABAL_INSTALL_VERSION.tar.gz"
+STACK_VERSION="2.5.1"  
+STACK_ARCHITECTURE="x86_64"  
+STACK_PLATFORM="linux"  
+STACK_DIST_FILENAME="stack-$STACK_VERSION-$STACK_PLATFORM-$STACK_ARCHITECTURE.tar.gz"  
+STACK_DIST_UNZIPPED_DIR="stack-$STACK_VERSION-$STACK_PLATFORM-$STACK_ARCHITECTURE"
+STACK_DIST_URL="https://www.stackage.org/stack/$STACK_PLATFORM-$STACK_ARCHITECTURE"
+STACK_INSTALL_DIR="$HOME/Development/bin"
+STACK_TARGET_DIR="stack-$STACK_VERSION"
 
 
-# get distr  
 cd $DOWNLOADS_DIR
-GHC_DIST_URL="https://www.haskell.org/ghc/dist/$GHC_VERSION/$GHC_DIST_FILENAME"
-curl -L -O $GHC_DIST_URL  
-tar xvfJ $GHC_DIST_FILENAME  
-cd ghc-$GHC_VERSION  
 
-# install to  
-mkdir $HOME/Development/bin/ghc-$GHC_VERSION  
-# or choose another path
+echo "Download Stack"
+curl -L -o $STACK_DIST_FILENAME $STACK_DIST_URL  
 
-./configure --prefix=$HOME/Development/bin/ghc-$GHC_VERSION  
+echo "Unpack tar Stack release"
+tar xvfz $STACK_DIST_FILENAME
 
-make install
+# in case if error like this: 
+#curl: (77) error setting certificate verify locations: CAfile: 
+# /etc/pki/tls/certs/ca-bundle.crt CApath: 
+# ...
+# create ~/.curlrc file
+# and put this lines to it
+# capath=/etc/ssl/certs/
+# cacert=/etc/ssl/certs/ca-certificates.crt
 
-# symbol links  
-cd $HOME/Development/bin
-rm -f ghc
-ln -s `pwd`/ghc-$GHC_VERSION ghc  
+# move to home development dir
+echo "Move Stack to home development dir: rm $STACK_INSTALL_DIR/$STACK_TARGET_DIR"  
+rm -rf $STACK_INSTALL_DIR/$STACK_TARGET_DIR  
 
-# add $HOME/Development/bin/ghc to $PATH  
-# add this line to ~/.profile  
-export GHC_HOME=$HOME/Development/bin/ghc  
-export PATH=$GHC_HOME/bin:${PATH}
+echo "Move Stack to home development dir: mv $STACK_DIST_UNZIPPED_DIR -> $STACK_INSTALL_DIR/$STACK_TARGET_DIR"
+mv $STACK_DIST_UNZIPPED_DIR $STACK_INSTALL_DIR/$STACK_TARGET_DIR
 
-# to use updated path without log off
-source ~/.profile
+echo "Move Stack to home development dir: cd $STACK_INSTALL_DIR"
+cd $STACK_INSTALL_DIR  
 
-# remove temporary files  
-cd $DOWNLOADS_DIR  
-rm -rfv ghc-$GHC_VERSION*
+# sym link
+echo "Sym link Stack: rm stack"
+rm -rvf stack  
+echo "Sym link Stack: ln stack"
+ln -s `pwd`/$STACK_TARGET_DIR stack  
+
+# add to PATH environment  
+echo "Add to path environmental variable"
+STACK_HOME=$HOME/Development/bin/stack  
+PATH=$STACK_HOME:$PATH
+
+# clean up
+echo "Clean up"
+cd $DOWNLOADS_DIR
+rm -rf stack-$STACK_VERSION*
