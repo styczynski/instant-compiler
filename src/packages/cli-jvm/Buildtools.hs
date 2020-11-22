@@ -83,7 +83,7 @@ executeCommand command args cwd = liftIO $ shelly $ do
     return $ unpack result
 
 executeCommandStack :: [String] -> String -> Action String
-executeCommandStack args = executeCommand "./stack" (["--allow-different-user"] ++ args)
+executeCommandStack args = executeCommand "stack" (["--allow-different-user"] ++ args)
 
 executeCommandX :: String -> [String] -> String -> Action (Maybe String)
 executeCommandX command args cwd = liftIO $ catchany (shelly $ do

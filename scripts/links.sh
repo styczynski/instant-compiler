@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Creating Stack links..."
+
 mkdir -p src/packages/parser/_build/parser
 STACK_EXEC=""
 if ! [ -x "$(command -v git)" ]; then

@@ -15,6 +15,7 @@ customHook originalFn = do
             executeCommand "cp" (["-r", "_build/parser", "."]) "."
             executeCommand "sleep" ["5"] "."
             executeCommand "touch" ["parser"] "."
+            executeCommand "cat" ["parser/AbsSyntax.hs"] "."
             finish
     originalFn
 

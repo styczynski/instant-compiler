@@ -9,13 +9,13 @@ import           Data.Map.Lazy
 import qualified Data.Map.Lazy as M
 import           Compiler.Compiler
 
-type Analyzer = pProgram -> Exec Bool
+type Analyzer = Program -> Exec Bool
 
 analyze :: Analyzer
-analyze (pProgram statements) = do
+analyze (Prog statements) = do
   return True
 
-runAnalyzer :: pProgram -> Environment -> Analyzer -> IO Bool
+runAnalyzer :: Program -> Environment -> Analyzer -> IO Bool
 runAnalyzer tree env analyzer = do
  r <- runExceptT
    (runReaderT
