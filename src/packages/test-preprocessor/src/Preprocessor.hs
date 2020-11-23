@@ -14,6 +14,7 @@ import System.FilePath.Posix
 import System.Directory
 import System.IO
 
+import Data.Maybe
 import Data.Text (strip, pack, unpack)
 
 import Control.Monad
