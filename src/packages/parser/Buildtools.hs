@@ -49,7 +49,7 @@ executeStackBuild cmd path = do
     t <- executeCommandStackX cmd path
     (
        case t of
-       Just s -> return $ s <> "ERROR"
+       Just s -> return $ s /= "ERROR"
        Nothing -> executeStackBuild cmd path)
 
 -- Execute stack build CLI command but capture the output
