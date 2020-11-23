@@ -40,6 +40,7 @@ import Text.Regex.TDFA
 import System.Environment
 import System.IO.Error
 
+import Control.Monad
 import Control.Exception.Base
 
 -- Execute stack build CLI command
