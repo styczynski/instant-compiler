@@ -12,7 +12,7 @@ import           Compiler.Compiler
 type Analyzer = Program -> Exec Bool
 
 analyze :: Analyzer
-analyze (Program statements) = do
+analyze (Prog statements) = do
   return True
 
 runAnalyzer :: Program -> Environment -> Analyzer -> IO Bool

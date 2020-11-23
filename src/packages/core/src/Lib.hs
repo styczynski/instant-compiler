@@ -1,8 +1,9 @@
 module Lib where
 
 import Compiler.Compiler
-import Analyzer.Analyzer
 import Syntax.Base
+
+import JVM.JVM
 
 someFunc :: IO ()
 someFunc = putStrLn "someFunc"
@@ -24,7 +25,6 @@ runCWith :: Compiler -> Verbosity -> String -> Environment -> IO ExecutionResult
 runCWith compiler v s env = let ts = myLexer s in case pProgram ts of
           Bad s    -> return $ FailedParse $ show s
           Ok  tree -> do
-                        _ <- runAnalyzer tree env analyze
                         res <- runAST tree env compiler
                         return res
 
@@ -32,3 +32,6 @@ run :: Compiler -> Verbosity -> String -> IO ExecutionResult
 run compiler v s = do
   initEnv <- runInitEmpty
   runWith compiler v s initEnv
+
+runJVM :: JVMCompilerConfiguration -> Verbosity -> String -> IO ExecutionResult
+runJVM opts = run $ compilerJVM opts
