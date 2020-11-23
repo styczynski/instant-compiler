@@ -4,7 +4,7 @@ import Options.Applicative
 import Data.Semigroup ((<>))
 import Preprocessor
 
---| CLI parameters
+-- CLI parameters
 data MainArgs = MainArgs
   { verbosity :: Int
   , inputDirectory :: String
@@ -12,7 +12,7 @@ data MainArgs = MainArgs
   , outputDirectory :: String
   , testPrefix :: String }
 
---| Parse CLI parameters
+-- Parse CLI parameters
 parseMainArgs :: Parser MainArgs
 parseMainArgs = MainArgs
   <$> option auto
@@ -50,7 +50,7 @@ parseMainArgs = MainArgs
           <> help "Direcotry to look for tests input code"
           <> metavar "TEST_PREFIX" )
 
---| Test preprocessor main function
+-- Test preprocessor main function
 main :: IO ()
 main = mainEntry =<< execParser opts
   where
@@ -59,7 +59,7 @@ main = mainEntry =<< execParser opts
       <> progDesc "Haskell HSpec suites generator for Instant language"
       <> header "Piotr Styczynski 2019" )
 
---| Test preprocessor CLI entrypoint
+-- Test preprocessor CLI entrypoint
 mainEntry :: MainArgs -> IO ()
 mainEntry (MainArgs verbosity file lang out prefix) = case (verbosity, file, lang, out, prefix) of
   (v, dir, lang, out, prefix) -> preprocessDirectory lang prefix out dir

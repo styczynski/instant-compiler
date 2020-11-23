@@ -16,7 +16,7 @@ import Data.Array
 import qualified Data.Map as M
 import qualified Data.Text as T
 
---| Configuration for the LLVM compiler
+-- Configuration for the LLVM compiler
 data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmLibLocation :: String,
   llvmRunProgram :: Bool,
@@ -24,7 +24,7 @@ data LLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmOutputPath :: String
 }
 
---| Default LLVM compiler configuration
+-- Default LLVM compiler configuration
 defaultLLVMCompilerConfiguration :: LLVMCompilerConfiguration
 defaultLLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmLibLocation = ".",
@@ -33,7 +33,7 @@ defaultLLVMCompilerConfiguration = LLVMCompilerConfiguration {
   llvmOutputPath = "."
 }
 
---| Run compilation commands
+-- Run compilation commands
 runCompilationTools :: LLVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/llvm"]
@@ -52,14 +52,14 @@ runCompilationTools opts content = shelly $ silently $ do
   bash "cp" ["-rf", T.pack ("./insc_build/llvm/" ++ llvmProgramName opts ++ ".bc"), T.pack (llvmOutputPath opts)]
   return ()
 
---| Post-compile hook
+-- Post-compile hook
 postCompile :: LLVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
   out <- if llvmRunProgram opts then shelly $ silently $ bash (fromText $ T.pack ("./insc_build/llvm/" ++ llvmProgramName opts)) [] else return "Post-compile hook finished."
   return (T.unpack out, env)
 
---| Create unique registry name for the given expression
+-- Create unique registry name for the given expression
 uniqueNameForExpStack :: Exp -> Exec (String, Environment)
 uniqueNameForExpStack (ExpLit value) = do
   env <- ask
@@ -73,7 +73,7 @@ uniqueNameForExpStack _ = do
   (sl, env0) <- return $ uniqueName env
   return ("%" ++ sl, env0)
 
---| Helper function to evaluate arguments of the binary operation
+-- Helper function to evaluate arguments of the binary operation
 compileBinaryOpArgs :: Exp -> Exp -> Exec (String, String, [LInstruction], [LInstruction], Environment)
 compileBinaryOpArgs l r = do
   env <- ask
@@ -83,7 +83,7 @@ compileBinaryOpArgs l r = do
   (cr, env3) <- local (const env2) $ compileExp sr r
   return (sl, sr, cl, cr, env3)
 
---| Compile instant expressions
+-- Compile instant expressions
 compileExp :: String -> Exp -> Exec ([LInstruction], Environment)
 compileExp stackVarName (ExpAdd l r) = do
   (sl, sr, cl, cr, env) <- compileBinaryOpArgs l r
@@ -104,7 +104,7 @@ compileExp stackVarName (ExpVar _) = do
   env <- ask
   return ([], env)
 
---| Get unique variable name from it's name in code
+-- Get unique variable name from it's name in code
 getVarName :: String -> Exec String
 getVarName name = do
   env <- ask
@@ -115,7 +115,7 @@ getVarName name = do
       (Just (Local index)) <- return $ getVarLocByID id env
       return $ getUniqueNameFrom name index
 
---| Generate unique variable name from it's name in code; conditionally behaves as identity
+-- Generate unique variable name from it's name in code; conditionally behaves as identity
 generateAssignVarName :: Bool -> String -> Exec (String, Environment)
 generateAssignVarName True name = do
   env <- ask
@@ -127,7 +127,7 @@ generateAssignVarName False name = do
   env <- ask
   return (name, env)
 
---| Compile instant statements
+-- Compile instant statements
 compileStmt :: Bool -> Stmt -> Exec ([LInstruction], Environment)
 compileStmt shouldBeUnique (SAss (Ident name) (ExpLit val)) = do
   env <- ask
@@ -150,11 +150,11 @@ compileStmt _ (SExp exp) = do
    (assIns, env) <- local (const tmpEnv) $ compileStmt False $ SAss (Ident tmp) exp
    return (assIns ++ [Print $ "%" ++ tmp], env)
 
---| Create a compiler targeting LLVM with the default settings
+-- Create a compiler targeting LLVM with the default settings
 defaultCompilerLLVM :: Program -> Exec (String, Environment)
 defaultCompilerLLVM = compilerLLVM defaultLLVMCompilerConfiguration
 
---| Compile instant program
+-- Compile instant program
 compile :: Program -> Exec ([LInstruction], Environment)
 compile (Prog statements) = do
   env <- ask
@@ -163,7 +163,7 @@ compile (Prog statements) = do
       return (out ++ newOut, newEnv)) ([], env) statements
   return (pOut, pEnv)
 
---| Create a compiler targeting LLVM
+-- Create a compiler targeting LLVM
 compilerLLVM :: LLVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerLLVM opts program@(Prog statements) = do
   _ <- liftIO $ putStrLn "Compile Instant code..."

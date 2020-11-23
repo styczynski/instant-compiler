@@ -1,7 +1,7 @@
 import Buildtools
 import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
 
---| This function runs BNFC and creates parser code dynamically on build
+-- This function runs BNFC and creates parser code dynamically on build
 customHook originalFn = do
     executeTasks $ do
         want ["parser/TestSyntax.hs"]

@@ -5,7 +5,7 @@ import Data.Semigroup ((<>))
 
 import InscCli
 
---| Main CLI function
+-- Main CLI function
 main :: IO ()
 main = mainEntry =<< execParser opts
   where

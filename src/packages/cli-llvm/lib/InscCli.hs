@@ -12,15 +12,15 @@ import Lib
 import Compiler.Compiler
 import LLVM.LLVM
 
---| Run compiler on a given file path
+-- Run compiler on a given file path
 runFile :: Compiler -> Verbosity -> FilePath -> IO ()
 runFile compiler v f = putStrLn f >> readFile f >>= runBlock compiler v
 
---| Run compiler with the specified settings on a given input code
+-- Run compiler with the specified settings on a given input code
 callCompiler :: LLVMCompilerConfiguration -> Verbosity -> String -> IO String
 callCompiler opt = runBlockC (compilerLLVM opt)
 
---| Run given compiler on empty environment and given code and return output code
+-- Run given compiler on empty environment and given code and return output code
 runBlockC :: Compiler -> Verbosity -> String -> IO String
 runBlockC compiler v s = do
   initEnv0 <- runInitEmpty
@@ -34,7 +34,7 @@ runBlockC compiler v s = do
                     exitFailure
      Compiled out env -> return out
 
---| Run given compiler on empty environment and given code and print output code
+-- Run given compiler on empty environment and given code and print output code
 runBlockI :: Compiler -> Verbosity -> String -> IO ()
 runBlockI compiler v s = do
   initEnv0 <- runInitEmpty
@@ -49,19 +49,19 @@ runBlockI compiler v s = do
      Compiled out env -> do
                     putStrLn out
 
---| Easy way to change the default behaviour
+-- Easy way to change the default behaviour
 runBlock = runBlockI
 
---| Load input from stdin and run given compiler on it
+-- Load input from stdin and run given compiler on it
 execContents compiler v = getContents >>= runBlock compiler v
 
---| CLI parameters
+-- CLI parameters
 data MainArgs = MainArgs
   { file :: String
   , verbosity :: Int
   , shouldRun :: Bool }
 
---| Parse CLI parameters
+-- Parse CLI parameters
 parseMainArgs :: Parser MainArgs
 parseMainArgs = MainArgs
   <$> argument str (metavar "FILE")
@@ -75,13 +75,13 @@ parseMainArgs = MainArgs
      long "run" <>
      help "Run program after compilation")
 
---| Create compiler configuration
+-- Create compiler configuration
 compilerConf :: Maybe String -> Bool -> LLVMCompilerConfiguration
 compilerConf inputFile shouldRun = case inputFile of
   Nothing -> defaultLLVMCompilerConfiguration { llvmRunProgram = shouldRun }
   (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = takeBaseName path, llvmOutputPath = takeDirectory path, llvmRunProgram = shouldRun }
 
---| CLI entrypoint
+-- CLI entrypoint
 mainEntry :: MainArgs -> IO ()
 mainEntry (MainArgs file verbosity shouldRun) = case (verbosity, file, shouldRun) of
   (v, "stdin", shouldRun) -> execContents (compilerLLVM $ compilerConf Nothing shouldRun) v
