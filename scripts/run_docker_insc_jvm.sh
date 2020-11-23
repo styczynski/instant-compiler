@@ -1,4 +1,4 @@
 #!/bin/bash
 
-docker run -it insc_docker jvm $@
+docker run -it styczynski/insc-docker jvm $@
 

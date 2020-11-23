@@ -1,4 +1,4 @@
 #!/bin/bash
 
-docker run -it insc_docker llvm $@
+docker run -it styczynski/insc-docker llvm $@
 

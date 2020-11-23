@@ -15,6 +15,6 @@ stack:
 	bash ./scripts/links.sh
 
 build-docker:
-	docker build -t insc_docker .
+	docker build -t styczynski/insc-docker .
 	cp ./scripts/run_docker_insc_jvm.sh ./insc_jvm
 	cp ./scripts/run_docker_insc_llvm.sh ./insc_llvm
