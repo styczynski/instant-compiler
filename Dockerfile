@@ -26,7 +26,7 @@ ENV LLVM_RELEASE 11
 ENV LLVM_VERSION 11.0.0
 
 # Install Clang and LLVM
-COPY install_llvm.sh .
+COPY ./scripts/install_llvm.sh .
 RUN ./install_llvm.sh
 
 RUN llvm-as --version
@@ -73,4 +73,5 @@ RUN ls
 #COPY --from=builder /opt/waziup/insc_llvm .
 #COPY --from=builder /opt/waziup/lib .
 
-ENTRYPOINT ["./insc_jvm"]
+COPY ./scripts/entrypoint.sh .
+ENTRYPOINT ["./entrypoint.sh"]
