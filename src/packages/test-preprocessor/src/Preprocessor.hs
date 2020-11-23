@@ -54,7 +54,7 @@ preprocessTest lang prefix specName input = do
     let errorRegexStr = Data.Maybe.fromMaybe "" errorRegex
     let multilineStringStart = "[r|"
     let multilineStringEnd = "|]"
-    let indentedInput = intercalate "\n" $ filter (\line -> not $ null (unpack $ strip $ pack line)) $ map (removeAllTags . "         " ++ unpack . strip . pack) $ lines input
+    let indentedInput = intercalate "\n" $ filter (\line -> not $ null (unpack $ strip $ pack line)) $ map (removeAllTags . "         " . unpack . strip . pack) $ lines input
     return $ toString $ renderMarkup
       [compileText|
 {-# LANGUAGE QuasiQuotes #-}
