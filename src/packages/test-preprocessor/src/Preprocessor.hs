@@ -18,8 +18,10 @@ import Data.Text (strip, pack, unpack)
 
 import Control.Monad
 
+--| Verbosity level
 type Verbosity = Int
 
+--| Run test preprocessor on entire directory
 preprocessDirectory :: String -> String -> FilePath -> FilePath -> IO ()
 preprocessDirectory lang prefix out dir = do
     _ <- putStrLn $ "Scan dir " ++ dir
@@ -31,6 +33,7 @@ preprocessDirectory lang prefix out dir = do
     mapM_ (preprocessDirectory lang prefix out) fineDirs
     mapM_ (preprocessFile lang prefix out) fineFiles
 
+--| Run test preprocessor on a single test file
 preprocessFile :: String -> String -> FilePath -> FilePath -> IO ()
 preprocessFile lang prefix outPath file = do
     z <- putStrLn $ "Open file " ++ file
@@ -43,6 +46,7 @@ preprocessFile lang prefix outPath file = do
     createDirectoryIfMissing True outPath
     writeFile testName out
 
+--| Run test preprocessor on a input string with test content
 preprocessTest :: String -> String -> String -> String -> IO String
 preprocessTest lang prefix specName input = do
     SourceMetadata { testDescription = testDescription, testName = testName, errorRegex = errorRegex, shouldSkip = shouldSkip, expectedOutput = expectedOutput } <- extractTestMetadata input

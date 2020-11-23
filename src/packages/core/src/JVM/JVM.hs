@@ -23,11 +23,13 @@ import JVM.Inspection
 
 import qualified Data.Char as Char
 
+--| Generate Java manifest
 generateManifest :: JVMCompilerConfiguration -> String
 generateManifest opts = let programClassName = jvmProgramName opts in toString $ renderMarkup [compileText|Manifest-Version: 1.0
 Main-Class: #{programClassName}
 |]
 
+--| Compiler configuration for JVM
 data JVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmLibLocation :: String,
   jvmBinLocation :: String,
@@ -36,6 +38,7 @@ data JVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmOutputPath :: String
 }
 
+--| Default compiler configuration
 defaultJVMCompilerConfiguration :: JVMCompilerConfiguration
 defaultJVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmLibLocation = ".",
@@ -45,6 +48,7 @@ defaultJVMCompilerConfiguration = JVMCompilerConfiguration {
   jvmOutputPath = "."
 }
 
+--| Run compiler commands
 runCompilationTools :: JVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/jvm"]
@@ -67,16 +71,19 @@ runCompilationTools opts content = shelly $ silently $ do
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".jar"), T.pack (jvmOutputPath opts)]
   return ()
 
+--| Optimize expressions stack depth by swapping L/R subtree
 optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], Int, Bool)
 optimizeExpStackBiAlloc l r = do
   (ol, dl) <- compileExp l
   (or, dr) <- compileExp r
   return $ if dl <= dr then (ol, or, dr+1, False) else (or, ol, dl+1, True)
 
+--| Conditionally create swap instruction
 makeSwap :: Bool -> [JInstruction]
 makeSwap False = []
 makeSwap True = [Swap]
 
+--| Compile instant expressions
 compileExp :: Exp -> Exec ([JInstruction], Int)
 compileExp (ExpAdd l r) = do
   (cl, cr, s, _) <- optimizeExpStackBiAlloc l r
@@ -97,13 +104,16 @@ compileExp (ExpVar (Ident name)) = do
   (Just (Local index)) <- return $ getVar name env
   return ([LoadInt index], 1)
 
+--| Translate location to store instruction
 locationToStoreInst :: Location -> JInstruction
 locationToStoreInst (Local index) = StoreInt index
 
+--| Push constants
 compileConstPush :: Int -> [JInstruction]
 compileConstPush (-1) = [ConstInt "m1"]
 compileConstPush v = [ConstInt $ show v]
 
+--| Compile instant statements
 compileStmt :: Stmt -> Exec ([JInstruction], Environment)
 compileStmt (SAss (Ident name) exp) = do
   env <- ask
@@ -116,6 +126,7 @@ compileStmt (SExp exp) = do
   (compiledExp, _) <- compileExp exp
   return (compiledExp ++ [InvokeStatic "Runtime/printInt(I)V"], env)
 
+--| Compile instant program
 compile :: Program -> Exec ([JInstruction], Environment)
 compile (Prog statements) = do
   statements <- return statements
@@ -125,15 +136,18 @@ compile (Prog statements) = do
     return (out ++ newOut, newEnv)) ([], env) statements
   return (pOut ++ [Return], pEnv)
 
+--| Create a compiler for JVM target with default settings
 defaultCompilerJVM :: Program -> Exec (String, Environment)
 defaultCompilerJVM = compilerJVM defaultJVMCompilerConfiguration
 
+--| Post-compile hook
 postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
   out <- if jvmRunProgram opts then shelly $ silently $ bash "java" ["-jar", T.pack (jvmOutputPath opts ++ "/" ++ jvmProgramName opts ++ ".jar")] else return "Post-compile hook finished."
   return (T.unpack out, env)
 
+--| Create compiler targeting JVM
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerJVM opts program = do
   _ <- liftIO $ putStrLn "Compile Instant code..."

@@ -1,6 +1,7 @@
 import Buildtools
 import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
 
+--| This function runs BNFC and creates parser code dynamically on build
 customHook originalFn = do
     executeTasks $ do
         want ["parser/TestSyntax.hs"]
@@ -15,7 +16,6 @@ customHook originalFn = do
             executeCommand "cp" ["-r", "_build/parser", "."] "."
             executeCommand "sleep" ["5"] "."
             executeCommand "touch" ["parser"] "."
-            executeCommand "cat" ["parser/AbsSyntax.hs"] "."
             finish
     originalFn
 
