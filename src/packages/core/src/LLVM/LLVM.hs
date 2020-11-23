@@ -69,35 +69,28 @@ uniqueNameForExpStack _ = do
   (sl, env0) <- return $ uniqueName env
   return ("%" ++ sl, env0)
 
+compileBinaryOpArgs :: Exp -> Exp -> Exec (String, String, [LInstruction], [LInstruction], Environment)
+compileBinaryOpArgs l r = do
+  env <- ask
+  (sl, env0) <- local (const env) $ uniqueNameForExpStack l
+  (sr, env1) <- local (const env0) $ uniqueNameForExpStack r
+  (cl, env2) <- local (const env1) $ compileExp sl l
+  (cr, env3) <- local (const env2) $ compileExp sr r
+  return (sl, sr, cl, cr, env3)
+
 compileExp :: String -> Exp -> Exec ([LInstruction], Environment)
 compileExp stackVarName (ExpAdd l r) = do
-  env <- ask
-  (sl, env0) <- local (const env) $ uniqueNameForExpStack l
-  (sr, env1) <- local (const env0) $ uniqueNameForExpStack r
-  (cl, env2) <- local (const env1) $ compileExp sl l
-  (cr, env3) <- local (const env2) $ compileExp sr r
-  return (cl ++ cr ++ [Add stackVarName "i32" sl sr], env3)
+  (sl, sr, cl, cr, env) <- compileBinaryOpArgs l r
+  return (cl ++ cr ++ [Add stackVarName "i32" sl sr], env)
 compileExp stackVarName (ExpSub l r) = do
-  env <- ask
-  (sl, env0) <- local (const env) $ uniqueNameForExpStack l
-  (sr, env1) <- local (const env0) $ uniqueNameForExpStack r
-  (cl, env2) <- local (const env1) $ compileExp sl l
-  (cr, env3) <- local (const env2) $ compileExp sr r
-  return (cl ++ cr ++ [Sub stackVarName "i32" sl sr], env3)
+  (sl, sr, cl, cr, env) <- compileBinaryOpArgs l r
+  return (cl ++ cr ++ [Sub stackVarName "i32" sl sr], env)
 compileExp stackVarName (ExpDiv l r) = do
-  env <- ask
-  (sl, env0) <- local (const env) $ uniqueNameForExpStack l
-  (sr, env1) <- local (const env0) $ uniqueNameForExpStack r
-  (cl, env2) <- local (const env1) $ compileExp sl l
-  (cr, env3) <- local (const env2) $ compileExp sr r
-  return (cl ++ cr ++ [Div stackVarName "i32" sl sr], env3)
+  (sl, sr, cl, cr, env) <- compileBinaryOpArgs l r
+  return (cl ++ cr ++ [Div stackVarName "i32" sl sr], env)
 compileExp stackVarName (ExpMul l r) = do
-  env <- ask
-  (sl, env0) <- local (const env) $ uniqueNameForExpStack l
-  (sr, env1) <- local (const env0) $ uniqueNameForExpStack r
-  (cl, env2) <- local (const env1) $ compileExp sl l
-  (cr, env3) <- local (const env2) $ compileExp sr r
-  return (cl ++ cr ++ [Mul stackVarName "i32" sl sr], env3)
+  (sl, sr, cl, cr, env) <- compileBinaryOpArgs l r
+  return (cl ++ cr ++ [Mul stackVarName "i32" sl sr], env)
 compileExp stackVarName (ExpLit _) = do
   env <- ask
   return ([], env)
