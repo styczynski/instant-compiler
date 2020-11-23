@@ -11,22 +11,20 @@ someFunc = putStrLn "someFunc"
 type Verbosity = Int
 
 runInit :: Environment -> IO Environment
-runInit env = return env
+runInit = return
 
 runInitEmpty :: IO Environment
 runInitEmpty = runInit emptyEnv
 
 runWith :: Compiler -> Verbosity -> String -> Environment -> IO ExecutionResult
 runWith compiler v s env = do
-    r <- runCWith compiler v s env
-    return r
+    runCWith compiler v s env
 
 runCWith :: Compiler -> Verbosity -> String -> Environment -> IO ExecutionResult
 runCWith compiler v s env = let ts = myLexer s in case pProgram ts of
           Bad s    -> return $ FailedParse $ show s
           Ok  tree -> do
-                        res <- runAST tree env compiler
-                        return res
+                        runAST tree env compiler
 
 run :: Compiler -> Verbosity -> String -> IO ExecutionResult
 run compiler v s = do

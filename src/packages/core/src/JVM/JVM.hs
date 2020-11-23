@@ -24,7 +24,7 @@ import JVM.Inspection
 import qualified Data.Char as Char
 
 generateManifest :: JVMCompilerConfiguration -> String
-generateManifest opts = let programClassName = jvmProgramName opts in toString $ renderMarkup $ [compileText|Manifest-Version: 1.0
+generateManifest opts = let programClassName = jvmProgramName opts in toString $ renderMarkup [compileText|Manifest-Version: 1.0
 Main-Class: #{programClassName}
 |]
 
@@ -49,22 +49,22 @@ runCompilationTools :: JVMCompilerConfiguration -> String -> IO ()
 runCompilationTools opts content = shelly $ silently $ do
   bash "mkdir" ["-p", "./insc_build/jvm"]
   _ <- liftIO $ putStrLn "Generate Manifest file..."
-  _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".mf") $ generateManifest opts
+  _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".mf") $ generateManifest opts
   _ <- liftIO $ writeFile ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j") content
   _ <- liftIO $ putStrLn "Prepare runtime boilerplate..."
-  bash "cp" ["-rf", T.pack ((jvmLibLocation opts) ++ "/lib/Runtime.java"), "./insc_build/jvm/Runtime.java"]
+  bash "cp" ["-rf", T.pack (jvmLibLocation opts ++ "/lib/Runtime.java"), "./insc_build/jvm/Runtime.java"]
   _ <- liftIO $ putStrLn "Compile with Jasmine..."
-  bash "java" ["-jar", T.pack ((jvmBinLocation opts) ++ "/lib/jasmin.jar"), "-d", "./insc_build/jvm", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".j")]
+  bash "java" ["-jar", T.pack (jvmBinLocation opts ++ "/lib/jasmin.jar"), "-d", "./insc_build/jvm", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j")]
   _ <- liftIO $ putStrLn "Compile runtime boilerplate..."
   bash "javac" ["./insc_build/jvm/Runtime.java"]
   cd "./insc_build/jvm"
   _ <- liftIO $ putStrLn "Create executable jar..."
-  bash "jar" ["cmf", T.pack ((jvmProgramName opts) ++ ".mf"), T.pack ((jvmProgramName opts) ++ ".jar"), T.pack ("./" ++ (jvmProgramName opts) ++ ".class"), "./Runtime.class"]
+  bash "jar" ["cmf", T.pack (jvmProgramName opts ++ ".mf"), T.pack (jvmProgramName opts ++ ".jar"), T.pack ("./" ++ jvmProgramName opts ++ ".class"), "./Runtime.class"]
   cd "../.."
   _ <- liftIO $ putStrLn "Finalize..."
-  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".class"), T.pack (jvmOutputPath opts)]
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".class"), T.pack (jvmOutputPath opts)]
   bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".j"), T.pack (jvmOutputPath opts)]
-  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ (jvmProgramName opts) ++ ".jar"), T.pack (jvmOutputPath opts)]
+  bash "cp" ["-rf", T.pack ("./insc_build/jvm/" ++ jvmProgramName opts ++ ".jar"), T.pack (jvmOutputPath opts)]
   return ()
 
 optimizeExpStackBiAlloc :: Exp -> Exp -> Exec ([JInstruction], [JInstruction], Int, Bool)
@@ -80,18 +80,18 @@ makeSwap True = [Swap]
 compileExp :: Exp -> Exec ([JInstruction], Int)
 compileExp (ExpAdd l r) = do
   (cl, cr, s, _) <- optimizeExpStackBiAlloc l r
-  return $ (cl ++ cr ++ [IntOp Add], s)
+  return (cl ++ cr ++ [IntOp Add], s)
 compileExp (ExpDiv l r) = do
   (cl, cr, s, swap) <- optimizeExpStackBiAlloc l r
-  return $ (cl ++ cr ++ (makeSwap swap) ++ [IntOp Div], s)
+  return (cl ++ cr ++ makeSwap swap ++ [IntOp Div], s)
 compileExp (ExpMul l r) = do
   (cl, cr, s, _) <- optimizeExpStackBiAlloc l r
-  return $ (cl ++ cr ++ [IntOp Mul], s)
+  return (cl ++ cr ++ [IntOp Mul], s)
 compileExp (ExpSub l r) = do
   (cl, cr, s, swap) <- optimizeExpStackBiAlloc l r
-  return $ (cl ++ cr ++ (makeSwap swap) ++ [IntOp Sub], s)
+  return (cl ++ cr ++ makeSwap swap ++ [IntOp Sub], s)
 compileExp (ExpLit val) = do
-  if (val >= -1 && val <= 5) then do return (compileConstPush $ fromIntegral val, 1) else return ([Push $ JNumber $ fromIntegral val], 1)
+  if val >= -1 && val <= 5 then do return (compileConstPush $ fromIntegral val, 1) else return ([Push $ JNumber $ fromIntegral val], 1)
 compileExp (ExpVar (Ident name)) = do
   env <- ask
   (Just (Local index)) <- return $ getVar name env
@@ -109,7 +109,7 @@ compileStmt (SAss (Ident name) exp) = do
   env <- ask
   (compiledExp, _) <- compileExp exp
   (loc, env2) <- return $ defineAndAlloc name env
-  out <- return $ compiledExp ++ [locationToStoreInst loc]
+  let out = compiledExp ++ [locationToStoreInst loc]
   return (out, env2)
 compileStmt (SExp exp) = do
   env <- ask
@@ -118,27 +118,27 @@ compileStmt (SExp exp) = do
 
 compile :: Program -> Exec ([JInstruction], Environment)
 compile (Prog statements) = do
-  statements <- return $ statements
+  statements <- return statements
   env <- ask
   (pOut, pEnv) <- foldM (\(out, env) ins -> do
-    (newOut, newEnv) <- local (\_ -> env) $ compileStmt ins
+    (newOut, newEnv) <- local (const env) $ compileStmt ins
     return (out ++ newOut, newEnv)) ([], env) statements
   return (pOut ++ [Return], pEnv)
 
 defaultCompilerJVM :: Program -> Exec (String, Environment)
-defaultCompilerJVM p = compilerJVM defaultJVMCompilerConfiguration p
+defaultCompilerJVM = compilerJVM defaultJVMCompilerConfiguration
 
 postCompile :: JVMCompilerConfiguration -> Exec (String, Environment)
 postCompile opts = do
   env <- ask
-  out <- if (jvmRunProgram opts) then shelly $ silently $ bash "java" ["-jar", T.pack ((jvmOutputPath opts) ++ "/" ++ (jvmProgramName opts) ++ ".jar")] else return "Post-compile hook finished."
+  out <- if jvmRunProgram opts then shelly $ silently $ bash "java" ["-jar", T.pack (jvmOutputPath opts ++ "/" ++ jvmProgramName opts ++ ".jar")] else return "Post-compile hook finished."
   return (T.unpack out, env)
 
 compilerJVM :: JVMCompilerConfiguration -> Program -> Exec (String, Environment)
 compilerJVM opts program = do
   _ <- liftIO $ putStrLn "Compile Instant code..."
-  programClassName <- return $ jvmProgramName opts
-  header <- return $ toString $ renderMarkup $ [compileText|.bytecode 52.0
+  let programClassName = jvmProgramName opts
+  let header = toString $ renderMarkup [compileText|.bytecode 52.0
      .source #{programClassName}.java
      .class public #{programClassName}
      .super java/lang/Object
@@ -154,13 +154,13 @@ compilerJVM opts program = do
 
      .method public static main([Ljava/lang/String;)V
 |]
-  footer <- return $ [r|
+  let footer = [r|
      .end method
 |]
   (compiledProgram, env) <- compile program
-  stackLimit <- return $ getStackSize compiledProgram
-  localsLimit <- return $ getLocalsSize compiledProgram
+  let stackLimit = getStackSize compiledProgram
+  let localsLimit = getLocalsSize compiledProgram
   (insContent, _) <- return $ jasmineInstructions "       " $ [ Directive $ LimitStack stackLimit, Directive $ LimitLocals localsLimit ] ++ compiledProgram
-  content <- return $ header ++ insContent ++ footer
+  let content = header ++ insContent ++ footer
   _ <- liftIO $ runCompilationTools opts content
-  local (\_ -> env) $ postCompile opts
+  local (const env) $ postCompile opts

@@ -3,4 +3,4 @@ import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescript
 
 customHook originalFn = originalFn
 
-main = defaultMainWithHooks $ let UserHooks { readDesc = readDescDefault } = simpleUserHooks in simpleUserHooks { readDesc = (customHook readDescDefault) }
+main = defaultMainWithHooks $ let UserHooks { readDesc = readDescDefault } = simpleUserHooks in simpleUserHooks { readDesc = customHook readDescDefault }

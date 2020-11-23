@@ -24,11 +24,10 @@ runAnalyzer tree env analyzer = do
        (CompilerState {}
        )
      )
-     (env)
+     env
    )
- result <- return
+ return
      (case r of
        Left err -> False
        Right (res, _) -> res
      )
- return result

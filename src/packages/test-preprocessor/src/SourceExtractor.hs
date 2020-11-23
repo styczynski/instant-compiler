@@ -15,21 +15,21 @@ data SourceMetadata = SourceMetadata
 
 replaceAll :: String -> String -> String -> String
 replaceAll regex new_str str  =
-    let parts = concat $ map elems $ (str  =~  regex :: [MatchArray])
+    let parts = concatMap elems (str  =~  regex :: [MatchArray])
     in foldl (replace' new_str) str (reverse parts)
 
   where
      replace' :: [a] -> [a] -> (Int, Int) -> [a]
      replace' new list (shift, l)   =
         let (pre, post) = splitAt shift list
-        in pre ++ new ++ (drop l post)
+        in pre ++ new ++ drop l post
 
 removeAllTags :: String -> String
-removeAllTags input = replaceAll "\\(\\*\\* *(.+): +(.+) +\\*\\*\\)" "" input
+removeAllTags = replaceAll "\\(\\*\\* *(.+): +(.+) +\\*\\*\\)" ""
 
 extractTagUsing :: String -> SourceMetadata -> String -> (SourceMetadata -> [String] -> SourceMetadata) -> IO SourceMetadata
 extractTagUsing input meta regex foldFn = do
-    (a, b, c, descrMatchGroups) <- return $ ((input =~ regex) :: (String, String, String, [String]))
+    (a, b, c, descrMatchGroups) <- return ((input =~ regex) :: (String, String, String, [String]))
     return $ foldl foldFn meta [descrMatchGroups]
 
 extractTagDescriptionFn :: SourceMetadata -> [String] -> SourceMetadata
@@ -50,19 +50,18 @@ extractTagErrorFn meta matches = case matches of
 extractTagSkipFn :: SourceMetadata -> [String] -> SourceMetadata
 extractTagSkipFn meta matches = case matches of
     [] -> meta
-    (h:_) -> meta { shouldSkip = ((unpack $ strip $ pack h) == "Yes") }
+    (h:_) -> meta { shouldSkip = unpack (strip $ pack h) == "Yes" }
 
 extractTagOutputFn :: SourceMetadata -> [String] -> SourceMetadata
 extractTagOutputFn meta matches = case matches of
     [] -> meta
-    (h:_) -> meta { expectedOutput = (unpack $ strip $ pack h) }
+    (h:_) -> meta { expectedOutput = unpack $ strip $ pack h }
 
 extractTestMetadata :: String -> IO SourceMetadata
 extractTestMetadata input = do
-    initMeta <- return $ SourceMetadata { testDescription = "", testName = "", errorRegex = Nothing, shouldSkip = False, expectedOutput = "" }
+    let initMeta = SourceMetadata { testDescription = "", testName = "", errorRegex = Nothing, shouldSkip = False, expectedOutput = "" }
     meta0 <- extractTagUsing input initMeta regexTagDesribe extractTagDescriptionFn
     meta1 <- extractTagUsing input meta0 regexTagTest extractTagTestFn
     meta2 <- extractTagUsing input meta1 regexTagError extractTagErrorFn
     meta3 <- extractTagUsing input meta2 regexTagSkip extractTagSkipFn
-    meta4 <- extractTagUsing input meta3 regexTagOutput extractTagOutputFn
-    return meta4
+    extractTagUsing input meta3 regexTagOutput extractTagOutputFn

@@ -1,10 +1,10 @@
-{-# LANGUAGE QuasiQuotes #-}
+
 {-# LANGUAGE OverloadedStrings #-}
 module JVM.Jasmine where
 import Text.RawString.QQ
 import Data.List
 
-data JConstant = JNumber Int
+newtype JConstant = JNumber Int
 
 data JDirective =
   LimitStack Int
@@ -36,18 +36,18 @@ jasminePush :: JConstant -> String
 jasminePush (JNumber val)
   | val >= -128 && val <= 127 = "bipush " ++ show val
   | val > -32768 && val <= 32767 = "sipush " ++ show val
-  | True = "ldc " ++ show val
+  | otherwise = "ldc " ++ show val
 
 jasminePushSize :: JConstant -> Int
 jasminePushSize (JNumber val)
   | val >= 0 && val <= 255 = 1
   | val > 255 && val <= 65535 = 2
-  | True = 2
+  | otherwise = 2
 
 jasmineStoreInt :: Int -> String
 jasmineStoreInt index
   | index >= 0 && index <= 3 = "istore_" ++ show index
-  | True = "istore " ++ show index
+  | otherwise = "istore " ++ show index
 
 jasmineConstInt :: String -> String
 jasmineConstInt index = "iconst_" ++ index
@@ -55,7 +55,7 @@ jasmineConstInt index = "iconst_" ++ index
 jasmineLoadInt :: Int -> String
 jasmineLoadInt index
   | index >= 0 && index <= 3 = "iload_" ++ show index
-  | True = "iload " ++ show index
+  | otherwise = "iload " ++ show index
 
 jasmineOpInt :: JIntOp -> String
 jasmineOpInt Div = "idiv"
@@ -85,4 +85,4 @@ jasmineGeneratePrefix i _ = ("", i)
 
 jasmineInstructions :: String -> [JInstruction] -> (String, Int)
 jasmineInstructions globalPrefix ins = foldl (\(acc, i) (el, ins) -> let (prefix, newI) = jasmineGeneratePrefix i ins in
-  if acc == "" then ((globalPrefix ++ prefix ++ el), newI) else ((acc ++ "\n" ++ globalPrefix ++ prefix ++ el), newI)) ("", 0) $ map (\(_, v) -> ((instructionToJasmine v), v)) $ zip [0..] ins
+  if acc == "" then (globalPrefix ++ prefix ++ el, newI) else (acc ++ "\n" ++ globalPrefix ++ prefix ++ el, newI)) ("", 0) $ zipWith (\ _x v -> (instructionToJasmine v, v)) [0..] ins

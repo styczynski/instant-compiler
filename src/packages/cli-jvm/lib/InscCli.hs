@@ -17,7 +17,7 @@ runFile :: Compiler -> Verbosity -> FilePath -> IO ()
 runFile compiler v f = putStrLn f >> readFile f >>= runBlock compiler v
 
 callCompiler :: JVMCompilerConfiguration -> Verbosity -> String -> IO String
-callCompiler opt v = runBlockC (compilerJVM opt) v
+callCompiler opt = runBlockC (compilerJVM opt)
 
 runBlockC :: Compiler -> Verbosity -> String -> IO String
 runBlockC compiler v s = do
@@ -68,10 +68,10 @@ parseMainArgs = MainArgs
      long "run" <>
      help "Run program after compilation")
 
-compilerConf :: (Maybe String) -> Bool -> JVMCompilerConfiguration
+compilerConf :: Maybe String -> Bool -> JVMCompilerConfiguration
 compilerConf inputFile shouldRun = case inputFile of
   Nothing -> defaultJVMCompilerConfiguration { jvmRunProgram = shouldRun }
-  (Just path) -> defaultJVMCompilerConfiguration { jvmProgramName = (takeBaseName path), jvmOutputPath = (takeDirectory path), jvmRunProgram = shouldRun }
+  (Just path) -> defaultJVMCompilerConfiguration { jvmProgramName = takeBaseName path, jvmOutputPath = takeDirectory path, jvmRunProgram = shouldRun }
 
 mainEntry :: MainArgs -> IO ()
 mainEntry (MainArgs file verbosity shouldRun) = case (verbosity, file, shouldRun) of

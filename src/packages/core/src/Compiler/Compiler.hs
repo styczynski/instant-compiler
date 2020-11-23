@@ -18,9 +18,9 @@ data Environment = Environment {
   freeVarNameNo :: Int
 }
 
-data Location = Local Int
+newtype Location = Local Int
 
-data Variable = VarID Int
+newtype Variable = VarID Int
 
 emptyEnv = Environment {
   store = empty,
@@ -32,7 +32,7 @@ emptyEnv = Environment {
 
 data ExecutionResult = FailedParse String | FailedCompilation String | Compiled String Environment
 type Exec
-  = StateT (CompilerState) (ReaderT (Environment) (ExceptT String IO))
+  = StateT CompilerState (ReaderT Environment (ExceptT String IO))
 
 type Compiler = Program -> Exec (String, Environment)
 
@@ -42,31 +42,31 @@ getUniqueNameFrom prefix index = prefix ++ "__var_" ++ show index
 uniqueNameFromRaw :: String -> Environment -> (String, Environment)
 uniqueNameFromRaw prefix env =
   let newName = prefix ++ "_" ++ show (freeVarNameNo env) in
-    (newName, env { freeVarNameNo = (freeVarNameNo env) + 1 })
+    (newName, env { freeVarNameNo = freeVarNameNo env + 1 })
 
 uniqueNameIndex :: Environment -> (Int, Environment)
 uniqueNameIndex env =
   let newNameIndex = freeVarNameNo env in
-    (newNameIndex, env { freeVarNameNo = (freeVarNameNo env) + 1 })
+    (newNameIndex, env { freeVarNameNo = freeVarNameNo env + 1 })
 
 uniqueName :: Environment -> (String, Environment)
-uniqueName env = uniqueNameFromRaw "var" env
+uniqueName = uniqueNameFromRaw "var"
 
 uniqueNameFrom :: String -> Environment -> (String, Environment)
-uniqueNameFrom prefix env = uniqueNameFromRaw (prefix ++ "__var") env
+uniqueNameFrom prefix = uniqueNameFromRaw (prefix ++ "__var")
 
 allocate :: Int -> Environment -> (Location, Environment)
 allocate id env =
   let freeIndex = freeLVIndex env in
-    ((Local freeIndex), env { freeLVIndex = (freeLVIndex env) + 1, store = insert id (Local freeIndex) (store env) })
+    (Local freeIndex, env { freeLVIndex = freeLVIndex env + 1, store = insert id (Local freeIndex) (store env) })
 
 allocateAt :: Int -> Int -> Environment -> (Location, Environment)
-allocateAt id freeIndex env = ((Local freeIndex), env { store = insert id (Local freeIndex) (store env) })
+allocateAt id freeIndex env = (Local freeIndex, env { store = insert id (Local freeIndex) (store env) })
 
 define :: String -> Environment -> (Int, Environment)
 define name env =
   let freeID = freeVarID env in
-    (freeID, env { freeVarID = (freeVarID env) + 1, scope = insert name (VarID freeID) (scope env) })
+    (freeID, env { freeVarID = freeVarID env + 1, scope = insert name (VarID freeID) (scope env) })
 
 defineAndAlloc :: String -> Environment -> (Location, Environment)
 defineAndAlloc name env =
@@ -96,12 +96,11 @@ runAST tree env compiler = do
         (CompilerState {}
         )
       )
-      (env)
+      env
     )
-  result <- return
+  return
     (case r of
       Left err -> FailedCompilation err
       Right ((res, env), _) ->
         Compiled res env
     )
-  return result

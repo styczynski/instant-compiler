@@ -25,19 +25,19 @@ preprocessDirectory lang prefix out dir = do
     _ <- putStrLn $ "Scan dir " ++ dir
     fileNames <- getDirectoryContents dir
     entriesNames <- filterM (\input -> return $ input `notElem` [".",".."]) fileNames
-    entries <- return $ map (\name -> dir </> name) entriesNames
-    fineFiles <- filterM (\input -> doesFileExist input) entries
-    fineDirs <- filterM (\input -> doesDirectoryExist input) entries
-    _ <- mapM (preprocessDirectory lang prefix out) fineDirs
-    mapM (preprocessFile lang prefix out) fineFiles >>= \_ -> return ()
+    let entries = map (dir </>) entriesNames
+    fineFiles <- filterM doesFileExist entries
+    fineDirs <- filterM doesDirectoryExist entries
+    mapM_ (preprocessDirectory lang prefix out) fineDirs
+    mapM_ (preprocessFile lang prefix out) fineFiles
 
 preprocessFile :: String -> String -> FilePath -> FilePath -> IO ()
 preprocessFile lang prefix outPath file = do
     z <- putStrLn $ "Open file " ++ file
-    name <- return $ takeBaseName file
-    specName <- return $ name ++ "Spec"
-    specNameFile <- return $ specName ++ ".hs"
-    testName <- return $ outPath </> specNameFile
+    let name = takeBaseName file
+    let specName = name ++ "Spec"
+    let specNameFile = specName ++ ".hs"
+    let testName = outPath </> specNameFile
     fileContent <- readFile file
     out <- preprocessTest lang prefix specName fileContent
     createDirectoryIfMissing True outPath
@@ -45,12 +45,12 @@ preprocessFile lang prefix outPath file = do
 
 preprocessTest :: String -> String -> String -> String -> IO String
 preprocessTest lang prefix specName input = do
-    (SourceMetadata { testDescription = testDescription, testName = testName, errorRegex = errorRegex, shouldSkip = shouldSkip, expectedOutput = expectedOutput }) <- extractTestMetadata input
-    errorRegexStr <- return $ maybe "" (\x -> x) errorRegex
-    multilineStringStart <- return "[r|"
-    multilineStringEnd <- return "|]"
-    indentedInput <- return $ intercalate "\n" $ filter (\line -> length (unpack $ strip $ pack line) > 0) $ map (\line -> removeAllTags $ "         " ++ (unpack $ strip $ pack line)) $ lines input
-    return $ toString $ renderMarkup $
+    SourceMetadata { testDescription = testDescription, testName = testName, errorRegex = errorRegex, shouldSkip = shouldSkip, expectedOutput = expectedOutput } <- extractTestMetadata input
+    let errorRegexStr = Data.Maybe.fromMaybe "" errorRegex
+    let multilineStringStart = "[r|"
+    let multilineStringEnd = "|]"
+    let indentedInput = intercalate "\n" $ filter (\line -> not $ null (unpack $ strip $ pack line)) $ map (removeAllTags . "         " ++ unpack . strip . pack) $ lines input
+    return $ toString $ renderMarkup
       [compileText|
 {-# LANGUAGE QuasiQuotes #-}
 module #{prefix}#{specName} where

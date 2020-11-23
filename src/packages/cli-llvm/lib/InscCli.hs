@@ -16,7 +16,7 @@ runFile :: Compiler -> Verbosity -> FilePath -> IO ()
 runFile compiler v f = putStrLn f >> readFile f >>= runBlock compiler v
 
 callCompiler :: LLVMCompilerConfiguration -> Verbosity -> String -> IO String
-callCompiler opt v = runBlockC (compilerLLVM opt) v
+callCompiler opt = runBlockC (compilerLLVM opt)
 
 runBlockC :: Compiler -> Verbosity -> String -> IO String
 runBlockC compiler v s = do
@@ -67,10 +67,10 @@ parseMainArgs = MainArgs
      long "run" <>
      help "Run program after compilation")
 
-compilerConf :: (Maybe String) -> Bool -> LLVMCompilerConfiguration
+compilerConf :: Maybe String -> Bool -> LLVMCompilerConfiguration
 compilerConf inputFile shouldRun = case inputFile of
   Nothing -> defaultLLVMCompilerConfiguration { llvmRunProgram = shouldRun }
-  (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = (takeBaseName path), llvmOutputPath = (takeDirectory path), llvmRunProgram = shouldRun }
+  (Just path) -> defaultLLVMCompilerConfiguration { llvmProgramName = takeBaseName path, llvmOutputPath = takeDirectory path, llvmRunProgram = shouldRun }
 
 mainEntry :: MainArgs -> IO ()
 mainEntry (MainArgs file verbosity shouldRun) = case (verbosity, file, shouldRun) of

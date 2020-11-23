@@ -9,4 +9,4 @@ customHook originalFn = do
             finish
     originalFn
 
-main = defaultMainWithHooks $ let UserHooks { readDesc = readDescDefault } = simpleUserHooks in simpleUserHooks { readDesc = (customHook readDescDefault) }
+main = defaultMainWithHooks $ let UserHooks { readDesc = readDescDefault } = simpleUserHooks in simpleUserHooks { readDesc = customHook readDescDefault }
