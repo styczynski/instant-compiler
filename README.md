@@ -1,4 +1,7 @@
-# instant-compiler
+# Instant Compiler
+![badge](https://img.shields.io/docker/image-size/styczynski/insc-docker)
+![GitHub last commit](https://img.shields.io/github/last-commit/styczynski/instant-compiler)
+![workflow status](https://github.com/styczynski/instant-compiler/workflows/Build%20and%20release%20Docker%20image/badge.svg)
 
 This project provides Instant language compiler.
 
@@ -38,7 +41,17 @@ To build this project simply run:
 	$ make all
 ```
 
-Please note that on students machine there is no Stack installation. To use Stack there I provided the user with `setup.sh` script that install stack and `links.sh` script that links the installed executable so that build process do not fail.
+Please note that build requires Stack to build. 
+If you want to you can alternatively build using Docker. In that case no external dependencies except Docker are required.
+
+## Building via Docker
+
+To build the project Docker container please run:
+```
+    $ make build-docker
+    # Created wrapper will invoke the already built Docker container underneath
+    $ ./insc_jvm ./foo/bar.ins
+```
 
 ## Project structure
 
@@ -71,7 +84,7 @@ Please note that on students machine there is no Stack installation. To use Stac
 
 After you build the project you can run:
 ```
-    $ insc_jvm ./foo/bar.ins
+    $ ./insc_jvm ./foo/bar.ins
     $ java -cp "$(pwd)/foo/:$(pwd)/lib" bar
 ```
 
@@ -82,7 +95,7 @@ This will compile the input file to JVM bytecode and run it. The command will re
 
 You can also use the LLVM backend:
 ```
-    $ insc_llvm ./foo/bar.ins
+    $ ./insc_llvm ./foo/bar.ins
     $ lli --extra-module $(pwd)/lib/runtime.ll $(pwd)/foo/bar.bc
 ```
 
@@ -99,8 +112,8 @@ Those files are translated to HSpec suites and executed.
 You can manually compile and run those files as ordinary files with Instant code.
  
 ```bash
-    $ insc_jvm ./examples/good/Basic01.ins -r
-    $ insc_llvm ./examples/good/Basic01.ins -r
+    $ ./insc_jvm ./examples/good/Basic01.ins -r
+    $ ./insc_llvm ./examples/good/Basic01.ins -r
 ```
 
 `-r` flag runs the compiled file after compilation ends.
